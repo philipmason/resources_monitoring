@@ -1,0 +1,4 @@
+cpu_pct_used,mem_pct_used,swap_pct_used,transient_pct_used,saswork_pct_used,xythosfs_pct_used,date
+7.4,19.3,17.1,43,0.4,43.1,2023-10-13T10:08:01+00:00
+4.7,19.7,17.1,50,0.4,43.3,2023-10-13T10:13:08+00:00
+6.6,19.7,17.1,50,0.7,43.3,2023-10-13T10:13:20+00:00
