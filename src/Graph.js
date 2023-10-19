@@ -4,7 +4,7 @@ import HighchartsReact from "highcharts-react-official";
 
 function Graph(props) {
   const // destructuring objects
-    { rows } = props,
+    { rows, filterRows } = props,
     // make array into an array that just has the invoice amounts
     cpu = rows.map((d) => {
       return { x: new Date(d.date), y: Number(d.cpu_pct_used) };
@@ -28,10 +28,12 @@ function Graph(props) {
     options = {
       chart: {
         type: "spline", // column, spline, area, bar, scatter, etc.
-        zooming: { enabled: true, type: "x" },
+        zoomType: "x",
+        zooming: { type: "x" },
+        height: window.innerHeight,
       },
       title: {
-        text: "Resources",
+        text: "LSAF Resource Usage",
       },
       series: [
         { name: "CPU", data: cpu },
@@ -46,6 +48,7 @@ function Graph(props) {
         labels: {
           format: "{value:%Y-%b-%e %l:%M %p}",
         },
+        minRange: 3600000,
       },
       yAxis: {
         title: {
@@ -56,10 +59,23 @@ function Graph(props) {
       plotOptions: {
         series: {
           turboThreshold: 0,
+          cursor: "pointer",
+          point: {
+            events: {
+              click: function () {
+                show(this);
+              },
+            },
+          },
         },
+        connectNulls: true,
       },
+    },
+    show = (e) => {
+      // console.log("Date: " + e.category + ", % Used: " + e.y);
+      filterRows(e.category);
     };
-  console.log("props", props, "rows", rows, "options", options);
+  // console.log("props", props, "rows", rows, "options", options);
 
   return (
     <div>
