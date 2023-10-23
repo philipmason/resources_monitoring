@@ -1,6 +1,16 @@
 import "./App.css";
 import { useState, useEffect } from "react";
-import { Snackbar } from "@mui/material";
+import {
+  Snackbar,
+  IconButton,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  Tooltip,
+  Button,
+  Box,
+} from "@mui/material";
+import { Info } from "@mui/icons-material";
 import { DataGridPro, GridToolbar, LicenseInfo } from "@mui/x-data-grid-pro";
 import { usePapaParse } from "react-papaparse";
 import localDay1 from "./test/day1.csv";
@@ -98,7 +108,7 @@ function App() {
         });
     },
     green = "rgba(128, 255, 128, 0.5)",
-    minMax = {},
+    [minMax, setMinMax] = useState({}),
     [reload, setReload] = useState(true),
     [reloadRemoteEvery, setReloadRemoteEvery] = useState(300000), // default 5 minutes
     [openSnackbar, setOpenSnackbar] = useState(false),
@@ -128,7 +138,50 @@ function App() {
       //   filtered
       // );
       setFilteredRows(filtered);
-    };
+    },
+    renderProgress = (cellValues) => {
+      // console.log(cellValues, minMax);
+      const { field, value } = cellValues,
+        flex =
+          (value - minMax[field].min) / (minMax[field].max - minMax[field].min),
+        avg = minMax[field].sum / minMax[field].n,
+        low =
+          field === "mem_pct_used"
+            ? 18
+            : field === "swap_pct_used"
+            ? 17.5
+            : field === "xythosfs_pct_used"
+            ? 40
+            : avg / 2,
+        high =
+          field === "mem_pct_used"
+            ? 20
+            : field === "swap_pct_used"
+            ? 20
+            : field === "xythosfs_pct_used"
+            ? 42
+            : avg * 2;
+
+      const backgroundColor =
+        Number(value) <= low
+          ? "#80ffbf"
+          : Number(value) >= high
+          ? "#ffcccc"
+          : "#cce6ff";
+
+      return (
+        <Box
+          sx={{
+            flex: { flex },
+            backgroundColor: backgroundColor,
+            color: "black",
+          }}
+        >
+          {value}
+        </Box>
+      );
+    },
+    [openInfo, setOpenInfo] = useState(false); // shows dialog with info about this screen
 
   useEffect(() => {
     if (!reload) return;
@@ -160,59 +213,67 @@ function App() {
   }, [reload]);
 
   useEffect(() => {
-    if (!rows || rows.length === 0) return;
+    if (!rows || rows.length === 0 || Object.keys(minMax).length < 5) return;
+    console.log("minMax", minMax);
     setCols([
       { field: "date", headerName: "Date", width: 150 },
       {
         field: "cpu_pct_used",
         headerName: "CPU",
-        width: 80,
-        // renderCell: (cellValues) => {
-        //   // console.log("cellValues", cellValues);
-        //   const { value, field } = cellValues;
-        //   if (!minMax[field]) return value;
-        //   const min = minMax[field].min,
-        //     max = minMax[field].max,
-        //     mid = (min + max) / 2;
-        //   let color = null;
-        //   if (field === "cpu_pct_used" && value > mid) color = "#ffdddd";
-        //   if (color) return <Box backgroundColor={color}>{value}</Box>;
-        //   else return value;
-        // },
+        width: 160,
+        type: "number",
+        renderCell: (cellValues) => {
+          return renderProgress(cellValues);
+        },
       },
       {
         field: "mem_pct_used",
         headerName: "Memory",
-        width: 80,
-        valueGetter: ({ value }) => value && Number(value),
+        width: 160,
+        type: "number",
+        renderCell: (cellValues) => {
+          return renderProgress(cellValues);
+        },
       },
       {
         field: "swap_pct_used",
         headerName: "Swap",
-        width: 80,
-        valueGetter: ({ value }) => value && Number(value),
+        width: 160,
+        type: "number",
+        renderCell: (cellValues) => {
+          return renderProgress(cellValues);
+        },
       },
       {
         field: "transient_pct_used",
         headerName: "Transient",
-        width: 80,
-        valueGetter: ({ value }) => value && Number(value),
+        width: 160,
+        type: "number",
+        renderCell: (cellValues) => {
+          return renderProgress(cellValues);
+        },
       },
       {
         field: "saswork_pct_used",
         headerName: "SAS work",
-        width: 80,
-        valueGetter: ({ value }) => value && Number(value),
+        width: 160,
+        type: "number",
+        renderCell: (cellValues) => {
+          return renderProgress(cellValues);
+        },
       },
       {
         field: "xythosfs_pct_used",
         headerName: "Xythos FS",
-        width: 80,
-        valueGetter: ({ value }) => value && Number(value),
+        width: 160,
+        type: "number",
+        renderCell: (cellValues) => {
+          return renderProgress(cellValues);
+        },
       },
     ]);
     // eslint-disable-next-line
-  }, [rows]);
+  }, [rows, minMax]);
 
   useEffect(() => {
     if (day1 && day2 && day3 && day4 && day5 && day6 && day7) {
@@ -225,20 +286,24 @@ function App() {
         });
       // console.log("tempRows", tempRows);
       // work out the min and max for each column and put into an object
+      const tempMinMax = {};
       tempRows.forEach((row) => {
         const keys = Object.keys(row);
         keys.forEach((key) => {
           // console.log(acc, xx, ind, key, row[key]);
           if (key !== "id" && key !== "date") {
-            if (!minMax[key]) minMax[key] = { min: 100, max: 0 };
-            if (Number(row[key]) < minMax[key].min)
-              minMax[key].min = Number(row[key]);
-            if (Number(row[key]) > minMax[key].max)
-              minMax[key].max = Number(row[key]);
+            if (!tempMinMax[key])
+              tempMinMax[key] = { min: 100, max: 0, n: 0, sum: 0 };
+            if (Number(row[key]) < tempMinMax[key].min)
+              tempMinMax[key].min = Number(row[key]);
+            if (Number(row[key]) > tempMinMax[key].max)
+              tempMinMax[key].max = Number(row[key]);
+            tempMinMax[key].n = tempMinMax[key].n + 1;
+            tempMinMax[key].sum = tempMinMax[key].sum + Number(row[key]);
           }
         });
       });
-      // console.log("minMax", minMax);
+      console.log("tempMinMax", tempMinMax);
       // work out average interval between dates
       const interval =
         tempRows
@@ -253,12 +318,24 @@ function App() {
       console.log("Interval between reloads set to", interval, "ms");
       setRows(tempRows);
       setFilteredRows(tempRows);
+      setMinMax(tempMinMax);
     }
     // eslint-disable-next-line
   }, [day1, day2, day3, day4, day5, day6, day7]);
 
   return (
     <div className="App">
+      <Tooltip title="Information about this screen">
+        <IconButton
+          color="info"
+          sx={{ position: "fixed", top: 2, right: 2, zIndex: 100 }}
+          onClick={() => {
+            setOpenInfo(true);
+          }}
+        >
+          <Info />
+        </IconButton>
+      </Tooltip>
       {/* <Box>LSAF Resource Usage</Box> */}
       {day1 &&
         day2 &&
@@ -279,6 +356,7 @@ function App() {
           rows={filteredRows}
           columns={cols}
           density="compact"
+          rowHeight={22}
           sx={{
             // height: windowDimension.winHeight - topMargin,
             fontFamily: "system-ui;",
@@ -318,10 +396,72 @@ function App() {
               showQuickFilter: true,
             },
           }}
-          pageSizeOptions={[10, 25, 50, 100]}
-          pagination
+          // pageSizeOptions={[10, 25, 50, 100]}
+          // pagination
         />
       )}
+      {/* Dialog with General info about this screen */}
+      <Dialog
+        fullWidth
+        maxWidth="xl"
+        onClose={() => setOpenInfo(false)}
+        open={openInfo}
+        title={"Info about this screen"}
+      >
+        <DialogTitle>Info about this screen</DialogTitle>
+        <DialogContent>
+          <ul>
+            <li>
+              Data for this report is produced by an LSAF job that runs every 5
+              minutes located here:{" "}
+              <a
+                href="https://xarprod.ondemand.sas.com/lsaf/webdav/repo/general/biostat/tools/fileviewer/index.html?file=https://xarprod.ondemand.sas.com/lsaf/webdav/repo/general/biostat/jobs/utils/dev/jobs/job_resource_monitor.job"
+                target="_blank"
+                rel="noreferrer"
+              >
+                job_resource_monitor.job
+              </a>
+            </li>
+            <li>
+              The SAS program used to get stats is here:{" "}
+              <a
+                href="https://xarprod.ondemand.sas.com/lsaf/webdav/repo/general/biostat/tools/fileviewer/index.html?file=https://xarprod.ondemand.sas.com/lsaf/webdav/repo/general/biostat/jobs/utils/dev/programs/resource_monitor.sas"
+                target="_blank"
+                rel="noreferrer"
+              >
+                resource_monitor.sas
+              </a>
+            </li>
+            <li>
+              Clicking on the graph will filter the table to an hour either side
+              of the time you click on. This allows investigating the time
+              around the point you select.
+            </li>
+          </ul>
+          <Tooltip title={"Email technical programmers"}>
+            <Button
+              sx={{
+                color: "blue",
+                border: 1,
+                borderColor: "blue",
+                borderRadius: 1,
+                padding: 0.4,
+                float: "right",
+              }}
+              onClick={() => {
+                window.open(
+                  "mailto:qs_tech_prog@argenx.com?subject=Question&body=This email was sent from: " +
+                    encodeURIComponent(href) +
+                    "%0D%0A%0D%0AMy question is:",
+                  "_blank"
+                );
+              }}
+            >
+              Email
+            </Button>
+          </Tooltip>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
