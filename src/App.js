@@ -10,7 +10,7 @@ import {
   Button,
   Box,
 } from "@mui/material";
-import { Info } from "@mui/icons-material";
+import { CalendarMonth, Info } from "@mui/icons-material";
 import { DataGridPro, GridToolbar, LicenseInfo } from "@mui/x-data-grid-pro";
 import { usePapaParse } from "react-papaparse";
 import localDay1 from "./test/day1.csv";
@@ -20,6 +20,7 @@ import localDay4 from "./test/day4.csv";
 import localDay5 from "./test/day5.csv";
 import localDay6 from "./test/day6.csv";
 import localDay7 from "./test/day7.csv";
+import past_week from "./test/past_week.csv";
 import Graph from "./Graph";
 LicenseInfo.setLicenseKey(
   "369a1eb75b405178b0ae6c2b51263cacTz03MTMzMCxFPTE3MjE3NDE5NDcwMDAsUz1wcm8sTE09c3Vic2NyaXB0aW9uLEtWPTI="
@@ -38,6 +39,7 @@ function App() {
     [day5, setDay5] = useState(null),
     [day6, setDay6] = useState(null),
     [day7, setDay7] = useState(null),
+    [loadDays, setLoadDays] = useState(true),
     [cols, setCols] = useState([]),
     [rows, setRows] = useState(null),
     [filteredRows, setFilteredRows] = useState([]),
@@ -68,7 +70,16 @@ function App() {
           else if (day === 4) setDay4(tempRows.filter((r) => r.date));
           else if (day === 5) setDay5(tempRows.filter((r) => r.date));
           else if (day === 6) setDay6(tempRows.filter((r) => r.date));
-          else setDay7(tempRows.filter((r) => r.date));
+          else if (day === 7) setDay7(tempRows.filter((r) => r.date));
+          else if (day === "*") {
+            setDay1(tempRows.filter((r) => r.date));
+            setDay2([]);
+            setDay3([]);
+            setDay4([]);
+            setDay5([]);
+            setDay6([]);
+            setDay7([]);
+          }
           // setCols(keys.map((k) => ({ field: k })));
         },
       });
@@ -88,7 +99,9 @@ function App() {
           ? localDay5
           : day === 6
           ? localDay6
-          : localDay7;
+          : day === 7
+          ? localDay7
+          : past_week;
       fetch(csv)
         .then((response) => response.text())
         .then((data) => {
@@ -181,7 +194,8 @@ function App() {
         </Box>
       );
     },
-    [openInfo, setOpenInfo] = useState(false); // shows dialog with info about this screen
+    [openInfo, setOpenInfo] = useState(false), // shows dialog with info about this screen
+    [openDateSelector, setOpenDateSelector] = useState(false); // shows dialog with date selector
 
   useEffect(() => {
     if (!reload) return;
@@ -189,22 +203,30 @@ function App() {
     setOpenSnackbar(true);
     if (mode === "local") {
       setRows([]);
-      addLocalRows(1);
-      addLocalRows(2);
-      addLocalRows(3);
-      addLocalRows(4);
-      addLocalRows(5);
-      addLocalRows(6);
-      addLocalRows(7);
+      if (loadDays) {
+        addLocalRows(1);
+        addLocalRows(2);
+        addLocalRows(3);
+        addLocalRows(4);
+        addLocalRows(5);
+        addLocalRows(6);
+        addLocalRows(7);
+      } else {
+        addLocalRows("*");
+      }
     } else {
       setRows([]);
-      addRemoteRows(1);
-      addRemoteRows(2);
-      addRemoteRows(3);
-      addRemoteRows(4);
-      addRemoteRows(5);
-      addRemoteRows(6);
-      addRemoteRows(7);
+      if (loadDays) {
+        addRemoteRows(1);
+        addRemoteRows(2);
+        addRemoteRows(3);
+        addRemoteRows(4);
+        addRemoteRows(5);
+        addRemoteRows(6);
+        addRemoteRows(7);
+      } else {
+        addRemoteRows("*");
+      }
       setTimeout(() => {
         setReload(true);
       }, reloadRemoteEvery);
@@ -321,7 +343,7 @@ function App() {
       setMinMax(tempMinMax);
     }
     // eslint-disable-next-line
-  }, [day1, day2, day3, day4, day5, day6, day7]);
+  }, [day1, day2, day3, day4, day5, day6, day7, loadDays]);
 
   return (
     <div className="App">
@@ -334,6 +356,17 @@ function App() {
           }}
         >
           <Info />
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="Choose another date range to display">
+        <IconButton
+          color="info"
+          sx={{ position: "fixed", top: 2, right: 26, zIndex: 100 }}
+          onClick={() => {
+            setOpenDateSelector(true);
+          }}
+        >
+          <CalendarMonth />
         </IconButton>
       </Tooltip>
       {/* <Box>LSAF Resource Usage</Box> */}
@@ -357,6 +390,7 @@ function App() {
           columns={cols}
           density="compact"
           rowHeight={22}
+          getRowId={(row) => Math.random()}
           sx={{
             // height: windowDimension.winHeight - topMargin,
             fontFamily: "system-ui;",
@@ -400,6 +434,38 @@ function App() {
           // pagination
         />
       )}
+      {/* Dialog with date selector to use different data in graph */}
+      <Dialog
+        fullWidth
+        maxWidth="xl"
+        onClose={() => setOpenDateSelector(false)}
+        open={openDateSelector}
+        title={"Date Selector"}
+      >
+        <DialogTitle>Select date range to show</DialogTitle>
+        <DialogContent>
+          <Button
+            onClick={() => {
+              setRows([]);
+              setLoadDays(false);
+              addLocalRows("*");
+              setOpenDateSelector(false);
+            }}
+          >
+            Show latest previous week
+          </Button>
+          <Button
+            onClick={() => {
+              setRows([]);
+              setLoadDays(true);
+              addLocalRows("1");
+              setOpenDateSelector(false);
+            }}
+          >
+            Show latest days
+          </Button>
+        </DialogContent>
+      </Dialog>
       {/* Dialog with General info about this screen */}
       <Dialog
         fullWidth

@@ -24,13 +24,42 @@ function Graph(props) {
     xythosfs = rows.map((d) => {
       return { x: new Date(d.date), y: Number(d.xythosfs_pct_used) };
     }),
-    // create options needed for graph - https://www.highcharts.com/demo
-    options = {
+    min = Math.min(...cpu.map((d) => d.x)),
+    max = Math.max(...cpu.map((d) => d.x)),
+    // take min date time and set to midnight on that day
+    minDate = new Date(min).setHours(0, 0, 0, 0),
+    // take max date time and set to 11:59pm on that day
+    maxDate = new Date(max).setHours(23, 59, 59, 999);
+  // create an array of dates starting at midnight and ending at 11:59pm
+  // for each day between min and max date
+  const dates = [];
+  for (let d = minDate; d <= maxDate; d += 86400000) {
+    dates.push(new Date(d));
+  }
+  const plotBands = dates.map((d, di) => {
+    return {
+      from: d,
+      to: dates[di + 1] ? dates[di + 1] : maxDate,
+      color: di % 2 ? "#ffffff" : "#dddddd",
+      label: {
+        text: d.toLocaleString("en-us", { weekday: "long" }),
+        style: {
+          color: "black",
+        },
+      },
+    };
+  });
+  const options = {
       chart: {
         type: "spline", // column, spline, area, bar, scatter, etc.
         zoomType: "x",
         zooming: { type: "x" },
         height: window.innerHeight,
+      },
+      info: {
+        min: min,
+        max: max,
+        dates: dates,
       },
       title: {
         text: "LSAF Resource Usage",
@@ -49,12 +78,14 @@ function Graph(props) {
           format: "{value:%Y-%b-%e %l:%M %p}",
         },
         minRange: 3600000,
+        plotBands: plotBands,
       },
       yAxis: {
         title: {
           text: "% Used",
         },
       },
+      time: { useUTC: true, timezoneOffset: 0 },
       data: { dateFormat: "YYYY-MM-DD" },
       plotOptions: {
         series: {
@@ -75,7 +106,7 @@ function Graph(props) {
       // console.log("Date: " + e.category + ", % Used: " + e.y);
       filterRows(e.category);
     };
-  // console.log("props", props, "rows", rows, "options", options);
+  console.log("props", props, "rows", rows, "options", options);
 
   return (
     <div>
