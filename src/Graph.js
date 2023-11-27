@@ -106,7 +106,7 @@ function Graph(props) {
       // console.log("Date: " + e.category + ", % Used: " + e.y);
       filterRows(e.category);
     };
-  console.log("props", props, "rows", rows, "options", options);
+  console.log("options", options);
 
   return (
     <div>

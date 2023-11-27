@@ -21,6 +21,7 @@ import localDay5 from "./test/day5.csv";
 import localDay6 from "./test/day6.csv";
 import localDay7 from "./test/day7.csv";
 import past_week from "./test/past_week.csv";
+import past_week_versions from "./test/past_week_versions.json";
 import Graph from "./Graph";
 LicenseInfo.setLicenseKey(
   "369a1eb75b405178b0ae6c2b51263cacTz03MTMzMCxFPTE3MjE3NDE5NDcwMDAsUz1wcm8sTE09c3Vic2NyaXB0aW9uLEtWPTI="
@@ -31,7 +32,8 @@ function App() {
     { href, protocol, host } = window.location,
     mode = href.startsWith("http://localhost") ? "local" : "remote",
     urlPrefix = protocol + "//" + host,
-    webDavPrefix = urlPrefix + "/lsaf/webdav/repo", // prefix for webdav access to LSAF
+    webDavPrefix = urlPrefix + "/lsaf/webdav/repo", // prefix for webdav access to LSAF - ignores versions
+    fileDownloadPrefix = urlPrefix + "/lsaf/filedownload/sdd%3A//", // prefix for file download access to LSAF - respects versions
     [day1, setDay1] = useState(null),
     [day2, setDay2] = useState(null),
     [day3, setDay3] = useState(null),
@@ -43,6 +45,9 @@ function App() {
     [cols, setCols] = useState([]),
     [rows, setRows] = useState(null),
     [filteredRows, setFilteredRows] = useState([]),
+    [timeout1, setTimeout1] = useState(null),
+    [versions, setVersions] = useState(null),
+    [selectedVersion, setSelectedVersion] = useState(null), // if not null, then use this version instead of latest
     processCsv = (data, day) => {
       readString(data, {
         worker: true,
@@ -84,6 +89,13 @@ function App() {
         },
       });
     },
+    addRows = (day) => {
+      if (mode === "local") {
+        addLocalRows(day);
+      } else {
+        addRemoteRows(day);
+      }
+    },
     addLocalRows = (day) => {
       // const csv = "./test/day" + day + ".csv";
       const csv =
@@ -102,6 +114,7 @@ function App() {
           : day === 7
           ? localDay7
           : past_week;
+      console.log("csv", csv);
       fetch(csv)
         .then((response) => response.text())
         .then((data) => {
@@ -109,11 +122,15 @@ function App() {
         });
     },
     addRemoteRows = (day) => {
-      const csv =
-        webDavPrefix +
-        "/general/biostat/metadata/projects/resources_monitoring/day" +
-        day +
-        ".csv";
+      const f = day === "*" ? "past_week" : "day" + day,
+        v = day === "*" && selectedVersion ? "?version=" + selectedVersion : "",
+        csv =
+          fileDownloadPrefix +
+          "/general/biostat/metadata/projects/resources_monitoring/" +
+          f +
+          ".csv" +
+          v;
+      console.log("csv", csv, "selectedVersion", selectedVersion, "v", v);
       fetch(csv)
         .then((response) => response.text())
         .then((data) => {
@@ -215,6 +232,7 @@ function App() {
         addLocalRows("*");
       }
     } else {
+      // remote
       setRows([]);
       if (loadDays) {
         addRemoteRows(1);
@@ -227,12 +245,31 @@ function App() {
       } else {
         addRemoteRows("*");
       }
-      setTimeout(() => {
+      // clear any existing timeout, and set a new one to auto update
+      if (timeout1) clearTimeout(timeout1);
+      const to = setTimeout(() => {
         setReload(true);
       }, reloadRemoteEvery);
+      setTimeout1(to);
     }
     // eslint-disable-next-line
   }, [reload]);
+
+  // get the list of versions
+  useEffect(() => {
+    if (mode === "local") {
+      setVersions(past_week_versions);
+    } else {
+      fetch(
+        webDavPrefix +
+          "/general/biostat/metadata/projects/resources_monitoring/past_week_versions.json"
+      )
+        .then((response) => response.text())
+        .then((data) => {
+          setVersions(JSON.parse(data));
+        });
+    }
+  }, [webDavPrefix, mode]);
 
   useEffect(() => {
     if (!rows || rows.length === 0 || Object.keys(minMax).length < 5) return;
@@ -430,8 +467,8 @@ function App() {
               showQuickFilter: true,
             },
           }}
-          // pageSizeOptions={[10, 25, 50, 100]}
-          // pagination
+          pageSizeOptions={[10, 25, 50, 100, 1000]}
+          pagination
         />
       )}
       {/* Dialog with date selector to use different data in graph */}
@@ -444,26 +481,82 @@ function App() {
       >
         <DialogTitle>Select date range to show</DialogTitle>
         <DialogContent>
-          <Button
-            onClick={() => {
-              setRows([]);
-              setLoadDays(false);
-              addLocalRows("*");
-              setOpenDateSelector(false);
-            }}
+          <Tooltip
+            title={"Latest week available - right up to within 5 minutes"}
           >
-            Show latest previous week
-          </Button>
-          <Button
-            onClick={() => {
-              setRows([]);
-              setLoadDays(true);
-              addLocalRows("1");
-              setOpenDateSelector(false);
-            }}
-          >
-            Show latest days
-          </Button>
+            <Button
+              onClick={() => {
+                setRows([]);
+                setLoadDays(true);
+                addRows("1");
+                addRows("2");
+                addRows("3");
+                addRows("4");
+                addRows("5");
+                addRows("6");
+                addRows("7");
+                setOpenDateSelector(false);
+                setSelectedVersion(null);
+                setTimeout(() => {
+                  setReload(true);
+                }, 2000); // wait a second and then trigger a reload
+              }}
+              sx={{ backgroundColor: "lightgreen", mr: 2 }}
+            >
+              Latest
+            </Button>
+          </Tooltip>
+          <Tooltip title={"Previous week"}>
+            <Button
+              onClick={() => {
+                setRows([]);
+                setLoadDays(false);
+                addRows("*");
+                setOpenDateSelector(false);
+                setSelectedVersion(null);
+                setTimeout(() => {
+                  setReload(true);
+                }, 2000); // wait a second and then trigger a reload
+              }}
+              sx={{ backgroundColor: "lightgreen", mr: 4 }}
+            >
+              Previous week
+            </Button>
+          </Tooltip>
+          {versions &&
+            versions.map((v, vi) => {
+              const size = versions.length,
+                backgroundColor =
+                  "#ffff" + Math.floor(128 + (vi / size) * 128).toString(16);
+              return (
+                <Tooltip title={`Version ${v} of previous week`}>
+                  {" "}
+                  <Button
+                    onClick={() => {
+                      setRows([]);
+                      setLoadDays(false);
+                      addRows("*");
+                      setOpenDateSelector(false);
+                      setSelectedVersion(v);
+                      setTimeout(() => {
+                        console.log(
+                          "selectedVersion",
+                          selectedVersion,
+                          "loadDays",
+                          loadDays,
+                          "reload",
+                          reload
+                        );
+                        setReload(true);
+                      }, 2000); // wait a second and then trigger a reload
+                    }}
+                    sx={{ backgroundColor: backgroundColor, mr: 1 }}
+                  >
+                    {v}
+                  </Button>
+                </Tooltip>
+              );
+            })}
         </DialogContent>
       </Dialog>
       {/* Dialog with General info about this screen */}
