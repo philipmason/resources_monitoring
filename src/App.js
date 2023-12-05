@@ -90,6 +90,7 @@ function App() {
       });
     },
     addRows = (day) => {
+      console.log("addRows", day);
       if (mode === "local") {
         addLocalRows(day);
       } else {
@@ -130,7 +131,15 @@ function App() {
           f +
           ".csv" +
           v;
-      console.log("csv", csv, "selectedVersion", selectedVersion, "v", v);
+      console.log(
+        "> addRemoteRows - ",
+        "csv",
+        csv,
+        "selectedVersion",
+        selectedVersion,
+        "v",
+        v
+      );
       fetch(csv)
         .then((response) => response.text())
         .then((data) => {
@@ -215,7 +224,13 @@ function App() {
     [openDateSelector, setOpenDateSelector] = useState(false); // shows dialog with date selector
 
   useEffect(() => {
-    if (!reload) return;
+    // if (!reload) return;
+    console.log(
+      "useEffect - reload",
+      reload,
+      "selectedVersion",
+      selectedVersion
+    );
     setReload(false);
     setOpenSnackbar(true);
     if (mode === "local") {
@@ -253,7 +268,7 @@ function App() {
       setTimeout1(to);
     }
     // eslint-disable-next-line
-  }, [reload]);
+  }, [reload, selectedVersion]);
 
   // get the list of versions
   useEffect(() => {
@@ -511,10 +526,10 @@ function App() {
               onClick={() => {
                 setRows([]);
                 setLoadDays(false);
-                addRows("*");
                 setOpenDateSelector(false);
                 setSelectedVersion(null);
                 setTimeout(() => {
+                  addRows("*");
                   setReload(true);
                 }, 2000); // wait a second and then trigger a reload
               }}
@@ -535,7 +550,6 @@ function App() {
                     onClick={() => {
                       setRows([]);
                       setLoadDays(false);
-                      addRows("*");
                       setOpenDateSelector(false);
                       setSelectedVersion(v);
                       setTimeout(() => {
@@ -547,6 +561,7 @@ function App() {
                           "reload",
                           reload
                         );
+                        addRows("*");
                         setReload(true);
                       }, 2000); // wait a second and then trigger a reload
                     }}
