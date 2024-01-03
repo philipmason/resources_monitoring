@@ -48,7 +48,7 @@ function App() {
     [timeout1, setTimeout1] = useState(null),
     [versions, setVersions] = useState(null),
     [selectedVersion, setSelectedVersion] = useState(null), // if not null, then use this version instead of latest
-    processCsv = (data, day) => {
+    processCsv = (data, day, dayArray) => {
       readString(data, {
         worker: true,
         complete: (results) => {
@@ -70,12 +70,18 @@ function App() {
               .filter((r, seq) => r.id !== 0 && seq !== 0);
           // console.log("processCsv", day, "tempRows", tempRows);
           if (day === 1) setDay1(tempRows.filter((r) => r.date));
-          else if (day === 2) setDay2(tempRows.filter((r) => r.date));
-          else if (day === 3) setDay3(tempRows.filter((r) => r.date));
-          else if (day === 4) setDay4(tempRows.filter((r) => r.date));
-          else if (day === 5) setDay5(tempRows.filter((r) => r.date));
-          else if (day === 6) setDay6(tempRows.filter((r) => r.date));
-          else if (day === 7) setDay7(tempRows.filter((r) => r.date));
+          else if (day === 2 || dayArray === 2)
+            setDay2(tempRows.filter((r) => r.date));
+          else if (day === 3 || dayArray === 3)
+            setDay3(tempRows.filter((r) => r.date));
+          else if (day === 4 || dayArray === 4)
+            setDay4(tempRows.filter((r) => r.date));
+          else if (day === 5 || dayArray === 5)
+            setDay5(tempRows.filter((r) => r.date));
+          else if (day === 6 || dayArray === 6)
+            setDay6(tempRows.filter((r) => r.date));
+          else if (day === 7 || dayArray === 7)
+            setDay7(tempRows.filter((r) => r.date));
           else if (day === "*") {
             setDay1(tempRows.filter((r) => r.date));
             setDay2([]);
@@ -94,7 +100,8 @@ function App() {
       if (mode === "local") {
         addLocalRows(day);
       } else {
-        addRemoteRows(day);
+        if (day === "M") addLastMonth();
+        else addRemoteRows(day, null);
       }
     },
     addLocalRows = (day) => {
@@ -122,9 +129,21 @@ function App() {
           processCsv(data, day);
         });
     },
-    addRemoteRows = (day) => {
+    addLastMonth = () => {
+      // add the previous 5 weeks
+      versions.forEach((v, vi) => {
+        if (vi > 4) return;
+        const dayArray = (vi = 0 ? "*" : vi + 1);
+        addRemoteRows("*", v, dayArray);
+      });
+    },
+    addRemoteRows = (day, version, dayArray) => {
       const f = day === "*" ? "past_week" : "day" + day,
-        v = day === "*" && selectedVersion ? "?version=" + selectedVersion : "",
+        v = version
+          ? "?version=" + version
+          : day === "*" && selectedVersion
+          ? "?version=" + selectedVersion
+          : "",
         csv =
           fileDownloadPrefix +
           "/general/biostat/metadata/projects/resources_monitoring/" +
@@ -143,7 +162,8 @@ function App() {
       fetch(csv)
         .then((response) => response.text())
         .then((data) => {
-          processCsv(data, day);
+          if (dayArray) processCsv(data, day, dayArray);
+          else processCsv(data, day);
         });
     },
     green = "rgba(128, 255, 128, 0.5)",
@@ -250,15 +270,15 @@ function App() {
       // remote
       setRows([]);
       if (loadDays) {
-        addRemoteRows(1);
-        addRemoteRows(2);
-        addRemoteRows(3);
-        addRemoteRows(4);
-        addRemoteRows(5);
-        addRemoteRows(6);
-        addRemoteRows(7);
+        addRemoteRows(1, null);
+        addRemoteRows(2, null);
+        addRemoteRows(3, null);
+        addRemoteRows(4, null);
+        addRemoteRows(5, null);
+        addRemoteRows(6, null);
+        addRemoteRows(7, null);
       } else {
-        addRemoteRows("*");
+        addRemoteRows("*", null);
       }
       // clear any existing timeout, and set a new one to auto update
       if (timeout1) clearTimeout(timeout1);
@@ -536,6 +556,23 @@ function App() {
               sx={{ backgroundColor: "lightgreen", mr: 4 }}
             >
               Previous week
+            </Button>
+          </Tooltip>
+          <Tooltip title={"Previous month"}>
+            <Button
+              onClick={() => {
+                setRows([]);
+                setLoadDays(false);
+                setOpenDateSelector(false);
+                setSelectedVersion(null);
+                setTimeout(() => {
+                  addRows("M");
+                  setReload(true);
+                }, 2000); // wait a second and then trigger a reload
+              }}
+              sx={{ color: "white", backgroundColor: "darkgreen", mr: 4 }}
+            >
+              Previous month
             </Button>
           </Tooltip>
           {versions &&
