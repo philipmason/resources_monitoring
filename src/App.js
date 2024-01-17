@@ -134,7 +134,9 @@ function App() {
       versions.forEach((v, vi) => {
         if (vi > 4) return;
         const dayArray = (vi = 0 ? "*" : vi + 1);
-        addRemoteRows("*", v, dayArray);
+        setTimeout(() => {
+          addRemoteRows("*", v, dayArray);
+        }, 1000 * vi);
       });
     },
     addRemoteRows = (day, version, dayArray) => {
