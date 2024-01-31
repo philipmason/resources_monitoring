@@ -309,7 +309,7 @@ function App() {
   }, [webDavPrefix, mode]);
 
   useEffect(() => {
-    if (!rows || rows.length === 0 || Object.keys(minMax).length < 5) return;
+    if (!rows || rows.length === 0 || Object.keys(minMax).length < 6) return;
     console.log("minMax", minMax);
     setCols([
       { field: "date", headerName: "Date", width: 150 },
@@ -359,6 +359,15 @@ function App() {
         },
       },
       {
+        field: "workspace_pct_used",
+        headerName: "Workspace",
+        width: 160,
+        type: "number",
+        renderCell: (cellValues) => {
+          return renderProgress(cellValues);
+        },
+      },
+      {
         field: "xythosfs_pct_used",
         headerName: "Xythos FS",
         width: 160,
@@ -384,6 +393,7 @@ function App() {
       // work out the min and max for each column and put into an object
       const tempMinMax = {};
       tempRows.forEach((row) => {
+        row.workspace_pct_used = row.workspace_pct_used || 0.01 * Math.random();
         const keys = Object.keys(row);
         keys.forEach((key) => {
           // console.log(acc, xx, ind, key, row[key]);

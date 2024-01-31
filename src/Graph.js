@@ -21,6 +21,9 @@ function Graph(props) {
     saswork = rows.map((d) => {
       return { x: new Date(d.date), y: Number(d.saswork_pct_used) };
     }),
+    workspace = rows.map((d) => {
+      return { x: new Date(d.date), y: Number(d.workspace_pct_used) };
+    }),
     xythosfs = rows.map((d) => {
       return { x: new Date(d.date), y: Number(d.xythosfs_pct_used) };
     }),
@@ -70,6 +73,7 @@ function Graph(props) {
         { name: "Swap", data: swap },
         { name: "Transient", data: transient },
         { name: "SASwork", data: saswork },
+        { name: "Workspace", data: workspace },
         { name: "Xythosfs", data: xythosfs },
       ],
       xAxis: {
