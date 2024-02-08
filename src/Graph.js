@@ -4,7 +4,11 @@ import HighchartsReact from "highcharts-react-official";
 
 function Graph(props) {
   const // destructuring objects
-    { rows, filterRows } = props,
+    { rows, filterRows } = props;
+    // console.log('rows.length', rows.length);
+    // console.log('rows[0]]', rows[0]);
+    // console.log('rows[rows.length-1]', rows[rows.length-1]);
+  const
     // make array into an array that just has the invoice amounts
     cpu = rows.map((d) => {
       return { x: new Date(d.date), y: Number(d.cpu_pct_used) };
@@ -26,6 +30,36 @@ function Graph(props) {
     }),
     xythosfs = rows.map((d) => {
       return { x: new Date(d.date), y: Number(d.xythosfs_pct_used) };
+    }),
+    recvQbytes = rows.map((d) => {
+      let newR = { x: new Date(d.date), y: Math.log10(Number(d.TotalRecvQ_bytes) + 1) }  // +1 to allow representing 0 on a log scale
+      if (isNaN(newR.x)) newR.x = new Date();
+      if (isNaN(newR.y)) newR.y = 0.5;
+      return newR;
+    }),
+    sendQbytes = rows.map((d) => {
+      let newR = { x: new Date(d.date), y: Math.log10(Number(d.TotalSendQ_bytes) + 1) };  // +1 to allow representing 0 on a log scale
+      return newR;
+    }),
+    // usockets_servers, usockets_connections, tcp_active_connections, tcp_inactive_connections, active_https_conn, inactive_https_conn
+    // usockservers, usockconn, tcpactconn, tcpinactconn, httpsactconn, httpsinactconn
+    usockservers = rows.map((d) => {
+      return { x: new Date(d.date), y: Number(d.usockets_servers) };
+    }),
+    usockconn = rows.map((d) => {
+      return { x: new Date(d.date), y: Number(d.usockets_connections) };
+    }),
+    tcpactconn = rows.map((d) => {
+      return { x: new Date(d.date), y: Number(d.tcp_active_connections) };
+    }),
+    tcpinactconn = rows.map((d) => {
+      return { x: new Date(d.date), y: Number(d.tcp_inactive_connections) };
+    }),
+    httpsactconn = rows.map((d) => {
+      return { x: new Date(d.date), y: Number(d.active_https_conn) };
+    }),
+    httpsinactconn = rows.map((d) => {
+      return { x: new Date(d.date), y: Number(d.inactive_https_conn) };
     }),
     min = Math.min(...cpu.map((d) => d.x)),
     max = Math.max(...cpu.map((d) => d.x)),
@@ -75,24 +109,51 @@ function Graph(props) {
         { name: "SASwork", data: saswork },
         { name: "Workspace", data: workspace },
         { name: "Xythosfs", data: xythosfs },
+        // recvQbytes, sendQbytes
+        { name: "recvQbytes", data: recvQbytes, yAxis: 1, dashStyle: 'Dot'},  
+        { name: "sendQbytes", data: sendQbytes, yAxis: 1, dashStyle: 'Dot'},  
+        // usockservers, usockconn, tcpactconn, tcpinactconn, httpsactconn, httpsinactconn
+        { name: "uSockServers", data: usockservers, yAxis: 2, dashStyle: 'Dash', visible: false},   // Initially hidden
+        { name: "uSockConn", data: usockconn, yAxis: 2, dashStyle: 'Dash', visible: false},   // Initially hidden  
+        { name: "tcpActConn", data: tcpactconn, yAxis: 2, dashStyle: 'Dash', visible: false},   // Initially hidden  
+        { name: "tcpInactConn", data: tcpinactconn, yAxis: 2, dashStyle: 'Dash', visible: false},   // Initially hidden  
+        { name: "httpsActConn", data: httpsactconn, yAxis: 2, dashStyle: 'Dash', visible: false},   // Initially hidden  
+        { name: "httpsInactConn", data: httpsinactconn, yAxis: 2, dashStyle: 'Dash', visible: false},   // Initially hidden  
       ],
       xAxis: {
         type: "datetime",
+        title: { text: "% Used", },
         labels: {
-          format: "{value:%Y-%b-%e %l:%M %p}",
+          // format: "{value:%Y-%b-%e %l:%M %p}",
+          formatter: function() {
+            var date = new Date(this.value);
+            var offsetHours = -date.getTimezoneOffset() / 60;
+            var offsetMinutes = Math.abs(date.getTimezoneOffset() % 60);
+            var offset = 'GMT' + (offsetHours >= 0 ? '+' : '-') + 
+                         ('0' + Math.abs(offsetHours)).slice(-2) + ':' + 
+                         ('0' + offsetMinutes).slice(-2);
+                         // return Highcharts.dateFormat('%Y-%m-%d %H:%M ' + offset, this.value);
+                         return Highcharts.dateFormat('%a, %b %d %H:%M ' + offset, this.value);
+                        }
         },
         minRange: 3600000,
         plotBands: plotBands,
       },
-      yAxis: {
+      yAxis: [{
+        title: { text: "% Used", },
+      }, { // Secondary yAxis
+        title: { text: '... Data Queued, log10(bytes)', },
+        opposite: true
+    }, { // Tertiary yAxis
         title: {
-          text: "% Used",
+            text: '--- Number Connections'
         },
-      },
+        opposite: true
+    }],
       time: { useUTC: true, timezoneOffset: 0 },
       data: { dateFormat: "YYYY-MM-DD" },
       plotOptions: {
-        series: {
+        series: [{
           turboThreshold: 0,
           cursor: "pointer",
           point: {
@@ -102,7 +163,7 @@ function Graph(props) {
               },
             },
           },
-        },
+        }],
         connectNulls: true,
       },
     },
