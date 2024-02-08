@@ -2,8 +2,7 @@
   "name": "resource_monitoring",
   "version": "0.1.0",
   "private": true,
-  "homepage": "/lsaf/filedownload/sdd%3A///general/biostat/tools/resources_monitoring",
-  "proxy": "https://xarprod.ondemand.sas.com",
+  "homepage": "/lsaf/filedownload/sdd%3A///general/biostat/tools/resources_monitoring02",
   "dependencies": {
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
