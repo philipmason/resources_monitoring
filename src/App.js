@@ -309,7 +309,7 @@ function App() {
   }, [webDavPrefix, mode]);
 
   useEffect(() => {
-    if (!rows || rows.length === 0 || Object.keys(minMax).length < 17) return;
+    if (!rows || rows.length === 0 || Object.keys(minMax).length < 15) return;
     console.log("minMax", minMax);
     setCols([
       { field: "date", headerName: "Date", width: 150 },
@@ -471,13 +471,13 @@ function App() {
         const keys = Object.keys(row);
         keys.forEach((key) => {
           // console.log(acc, xx, ind, key, row[key]);
-          if (key !== "id" && key !== "date") {
+          if (key !== "id" && key !== "date" && key !== "high_usage") {
             row[key] = row[key] || (0.01 * Math.random()).toFixed(4);
           }
         })
         keys.forEach((key) => {
           // console.log(acc, xx, ind, key, row[key]);
-          if (key !== "id" && key !== "date") {
+          if (key !== "id" && key !== "date" && key !== "high_usage") {
             if (!tempMinMax[key])
               tempMinMax[key] = { min: 100, max: 0, n: 0, sum: 0 };
             if (Number(row[key]) < tempMinMax[key].min)
@@ -490,16 +490,21 @@ function App() {
         });
       });
       console.log("tempMinMax", tempMinMax);
+      const n_finite_dates = tempRows.filter(r => isFinite(new Date(r.date))).length;
+      // console.log('Nb rows with Finite Dates', n_finite_dates);
+
       // work out average interval between dates
-      const interval =
+      const interval = n_finite_dates <= 11 ? 120000 : Math.abs(
         tempRows
-          .slice(0, 10)
-          .map((r, i) => {
+          .filter(r => isFinite(new Date(r.date)))
+          .sort((a,b) => new Date(a.date) - new Date(b.date))
+          .slice(0, 11)
+          .map((r, i, ar) => {
             const diff =
-              Math.abs(new Date(tempRows[i].date) - new Date(tempRows[i + 1].date));
+              Math.abs(i>=10 ? 0 : new Date(ar[i].date) - new Date(ar[i + 1].date));
             return diff;
           })
-          .reduce((a, b) => a + b) / 10;
+          .reduce((a, b) => a + b) / 10);
       setReloadRemoteEvery(interval);
       console.log("Interval between reloads set to", interval, "ms");
       setRows(tempRows);
@@ -515,7 +520,6 @@ function App() {
   let uniqueRows = [];
   if (rows && rows.length > 0){
     uniqueRows = rows
-    .filter(row => row.inactive_https_conn)
     .filter((row) => {
       const isUnique = !uniqueDates.has(row.date);
       uniqueDates.add(row.date);
