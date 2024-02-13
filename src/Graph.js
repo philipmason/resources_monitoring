@@ -4,7 +4,7 @@ import HighchartsReact from "highcharts-react-official";
 
 function Graph(props) {
   const // destructuring objects
-    { rows:allrows, filterRows } = props;
+    { rows:allrows, filterRows, useUTC } = props;
   // When too many data points are present, the plot is not shown
   // So we need to resample the data to <= 1000 data points
   let rows;
@@ -15,70 +15,80 @@ function Graph(props) {
     // make array into an array that just has the invoice amounts
     _cpu = rows.map((d) => {
       if (! d.date || ! d.cpu_pct_used) {
-        return { x: Date.now().valueOf(), y: Math.random() };
+        return { x: Date.now(), y: Math.random() };
       }
-      return { x: new Date(d.date).valueOf(), y: Number(d.cpu_pct_used) };
+      return { x: new Date(d.date), y: Number(d.cpu_pct_used) };
     }),
     _mem = rows.map((d) => {
-      return { x: new Date(d.date).valueOf(), y: Number(d.mem_pct_used) };
+      return { x: new Date(d.date), y: Number(d.mem_pct_used) };
     }),
     _swap = rows.map((d) => {
-      return { x: new Date(d.date).valueOf(), y: Number(d.swap_pct_used) };
+      return { x: new Date(d.date), y: Number(d.swap_pct_used) };
     }),
     _transient = rows.map((d) => {
-      return { x: new Date(d.date).valueOf(), y: Number(d.transient_pct_used) };
+      return { x: new Date(d.date), y: Number(d.transient_pct_used) };
     }),
     _saswork = rows.map((d) => {
-      return { x: new Date(d.date).valueOf(), y: Number(d.saswork_pct_used) };
+      return { x: new Date(d.date), y: Number(d.saswork_pct_used) };
     }),
     _workspace = rows.map((d) => {
-      return { x: new Date(d.date).valueOf(), y: Number(d.workspace_pct_used) };
+      return { x: new Date(d.date), y: Number(d.workspace_pct_used) };
     }),
     _xythosfs = rows.map((d) => {
-      return { x: new Date(d.date).valueOf(), y: Number(d.xythosfs_pct_used) };
+      return { x: new Date(d.date), y: Number(d.xythosfs_pct_used) };
     }),
     _recvQbytes = rows.map((d) => {
-      let newR = { x: new Date(d.date).valueOf(), y: Math.log10(Number(d.TotalRecvQ_bytes) + 1) }  // +1 to allow representing 0 on a log scale
-      if (isNaN(newR.x)) newR.x = new Date().valueOf();
+      let newR = { x: new Date(d.date), y: Math.log10(Number(d.TotalRecvQ_bytes) + 1) }  // +1 to allow representing 0 on a log scale
+      if (isNaN(newR.x)) newR.x = new Date();
       if (isNaN(newR.y)) newR.y = 0.5;
       return newR;
     }),
     _sendQbytes = rows.map((d) => {
-      let newR = { x: new Date(d.date).valueOf(), y: Math.log10(Number(d.TotalSendQ_bytes) + 1) };  // +1 to allow representing 0 on a log scale
+      let newR = { x: new Date(d.date), y: Math.log10(Number(d.TotalSendQ_bytes) + 1) };  // +1 to allow representing 0 on a log scale
       return newR;
     }),
     // usockets_servers, usockets_connections, tcp_active_connections, tcp_inactive_connections, active_https_conn, inactive_https_conn
     // usockservers, usockconn, tcpactconn, tcpinactconn, httpsactconn, httpsinactconn
     _usockservers = rows.map((d) => {
-      return { x: new Date(d.date).valueOf(), y: Number(d.usockets_servers) };
+      return { x: new Date(d.date), y: Number(d.usockets_servers) };
     }),
     _usockconn = rows.map((d) => {
-      return { x: new Date(d.date).valueOf(), y: Number(d.usockets_connections) };
+      return { x: new Date(d.date), y: Number(d.usockets_connections) };
     }),
     _tcpactconn = rows.map((d) => {
-      return { x: new Date(d.date).valueOf(), y: Number(d.tcp_active_connections) };
+      return { x: new Date(d.date), y: Number(d.tcp_active_connections) };
     }),
     _tcpinactconn = rows.map((d) => {
-      return { x: new Date(d.date).valueOf(), y: Number(d.tcp_inactive_connections) };
+      return { x: new Date(d.date), y: Number(d.tcp_inactive_connections) };
     }),
     _httpsactconn = rows.map((d) => {
-      return { x: new Date(d.date).valueOf(), y: Number(d.active_https_conn) };
+      return { x: new Date(d.date), y: Number(d.active_https_conn) };
     }),
     _httpsinactconn = rows.map((d) => {
-      return { x: new Date(d.date).valueOf(), y: Number(d.inactive_https_conn) };
+      return { x: new Date(d.date), y: Number(d.inactive_https_conn) };
     }),
     min = Math.min(..._cpu.map((d) => d.x)),
-    max = Math.max(..._cpu.map((d) => d.x)),
-    // take min date time and set to midnight on that day
-    minDate = new Date(min).setHours(0, 0, 0, 0),
-    // take max date time and set to 11:59pm on that day
-    maxDate = new Date(max).setHours(23, 59, 59, 999);
+    max = Math.max(..._cpu.map((d) => d.x));
+    let minDate, maxDate;
+    if (useUTC) {
+      // take min date time and set to midnight on that day
+      minDate = new Date(min).setUTCHours(0, 0, 0, 0);
+      // take max date time and set to 11:59pm on that day
+      maxDate = new Date(max).setUTCHours(24, 0, 0, 0);
+    } else {
+      // take min date time and set to midnight on that day
+      minDate = new Date(min).setHours(0, 0, 0, 0);
+      // take max date time and set to 11:59pm on that day
+      maxDate = new Date(max).setHours(24, 0, 0, 0);
+    }
   // create an array of dates starting at midnight and ending at 11:59pm
   // for each day between min and max date
   const dates = [];
   for (let d = minDate; d <= maxDate; d += 86400000) {
     dates.push(new Date(d));
   }
+  console.log('dates:', dates);
+  console.log('last date:', dates.slice(-1)[0]);
   const plotBands = dates.map((d, di) => {
     return {
       from: d,
@@ -107,10 +117,37 @@ function Graph(props) {
         zooming: { type: "x" },
         height: window.innerHeight,
       },
+      global: {
+        useUTC: useUTC, 
+        timezoneOffset: new Date().getTimezoneOffset(),
+      },
       info: {
         min: min,
         max: max,
         dates: dates,
+      },
+      tooltip: {
+        formatter: function() {
+          const date = Highcharts.dateFormat('%Y-%m-%d %H:%M:%S', this.x, useUTC);
+          if (useUTC) {
+            return '<b>' + date + ' UTC </b><br/>' +
+              'Value: ' + this.y;
+          }
+          const utcOffset = new Date(this.x).getTimezoneOffset();
+          const sign = (utcOffset > 0) ? '-' : '+';
+          const hours = Math.floor(Math.abs(utcOffset) / 60);
+          const minutes = Math.abs(utcOffset) % 60;
+          const offsetString = sign + Highcharts.pad(hours, 2) + ':' + Highcharts.pad(minutes, 2);
+
+          // return '<b>' + Highcharts.dateFormat('%a, %b %d %H:%M', this.x, useUTC) + ' UTC' + offsetString + '</b><br/>' +           'Value: ' + this.y;
+          let localdateopts = {month: 'short',   // Short month name (e.g., Jan)
+            day: 'numeric',    // Day of the month (e.g., 15)
+            hour: 'numeric',   // Hour (e.g., 12)
+            minute: 'numeric',  // Minute (e.g., 30)
+            hour12: false         // Use 24-hour format
+          }
+          return '<b>' + new Date(this.x).toLocaleString("en-us", localdateopts) + ' UTC' + offsetString + '</b><br/> Value: ' + this.y;
+        }
       },
       title: {
         text: "LSAF Resource Usage",
@@ -143,13 +180,23 @@ function Graph(props) {
           // format: "{value:%Y-%b-%e %l:%M %p}",
           formatter: function() {
             var date = new Date(this.value);
+            if (useUTC) {
+              return Highcharts.dateFormat('%a, %b %d %H:%M UTC', this.value, useUTC);
+            }
             var offsetHours = -date.getTimezoneOffset() / 60;
             var offsetMinutes = Math.abs(date.getTimezoneOffset() % 60);
-            var offset = 'GMT' + (offsetHours >= 0 ? '+' : '-') + 
+            var offset = ' UTC' + (offsetHours >= 0 ? '+' : '-') + 
                          ('0' + Math.abs(offsetHours)).slice(-2) + ':' + 
                          ('0' + offsetMinutes).slice(-2);
-                         // return Highcharts.dateFormat('%Y-%m-%d %H:%M ' + offset, this.value);
-                         return Highcharts.dateFormat('%a, %b %d %H:%M ' + offset, this.value);
+            // return Highcharts.dateFormat('%Y-%m-%d %H:%M ' + offset, this.value);
+            // return Highcharts.dateFormat('%a, %b %d %H:%M ', this.value, useUTC)  + offset;
+            let localdateopts = {month: 'short',   // Short month name (e.g., Jan)
+              day: 'numeric',    // Day of the month (e.g., 15)
+              hour: 'numeric',   // Hour (e.g., 12)
+              minute: 'numeric',  // Minute (e.g., 30)
+              hour12: false         // Use 24-hour format
+            }
+            return  new Date(this.value).toLocaleString("en-us", localdateopts) + offset;
           }
         },
         minRange: 1800000,
@@ -168,7 +215,7 @@ function Graph(props) {
         opposite: true,
         visible: false // Initially set the secondary Y-axis 2 to be hidden
     }],
-      time: { useUTC: true, timezoneOffset: 0 },
+      time: { useUTC: useUTC, timezoneOffset: new Date().getTimezoneOffset() },
       data: { dateFormat: "YYYY-MM-DD" },
       plotOptions: {
         series: {
@@ -220,6 +267,7 @@ function Graph(props) {
       filterRows(e.category);
     };
     console.log("options", options);
+    console.log("new Date(options.info.max)", new Date(options.info.max));
     
   return (
     <div>
