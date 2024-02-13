@@ -2,7 +2,7 @@
   "name": "resource_monitoring",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://xarprod.ondemand.sas.com/lsaf/filedownload/sdd%3A///general/biostat/tools/resources_monitoring",
+  "homepage": "/lsaf/filedownload/sdd%3A///general/biostat/tools/resources_monitoring02",
   "dependencies": {
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
@@ -23,6 +23,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "zip-build": "npm run build && cd build && zip -r ../build.zip * && cd ..",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
