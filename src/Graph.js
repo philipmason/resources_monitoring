@@ -1,6 +1,7 @@
 import React from "react";
 import Highcharts from "highcharts";
 import HighchartsReact from "highcharts-react-official";
+import moment from 'moment';
 
 function Graph(props) {
   const // destructuring objects
@@ -95,7 +96,8 @@ function Graph(props) {
       to: dates[di + 1] ? dates[di + 1] : maxDate,
       color: di % 2 ? "#ffffff" : "#dddddd",
       label: {
-        text: d.toLocaleString("en-us", { weekday: "long" }),
+        // text: d.toLocaleString("en-us", { weekday: "long" }),
+        text: moment(d).format('ddd, MMM DD'),
         style: {
           color: "black",
         },
@@ -128,11 +130,12 @@ function Graph(props) {
       },
       tooltip: {
         formatter: function() {
-          const date = Highcharts.dateFormat('%Y-%m-%d %H:%M:%S', this.x, useUTC);
+          let date = Highcharts.dateFormat('%Y-%m-%d %H:%M:%S', this.x, useUTC);
           if (useUTC) {
             return '<b>' + date + ' UTC </b><br/>' +
               'Value: ' + this.y;
           }
+          date = moment(new Date(this.x)).format('YYYY-MM-DD HH:mm');
           const utcOffset = new Date(this.x).getTimezoneOffset();
           const sign = (utcOffset > 0) ? '-' : '+';
           const hours = Math.floor(Math.abs(utcOffset) / 60);
@@ -140,13 +143,21 @@ function Graph(props) {
           const offsetString = sign + Highcharts.pad(hours, 2) + ':' + Highcharts.pad(minutes, 2);
 
           // return '<b>' + Highcharts.dateFormat('%a, %b %d %H:%M', this.x, useUTC) + ' UTC' + offsetString + '</b><br/>' +           'Value: ' + this.y;
-          let localdateopts = {month: 'short',   // Short month name (e.g., Jan)
-            day: 'numeric',    // Day of the month (e.g., 15)
-            hour: 'numeric',   // Hour (e.g., 12)
-            minute: 'numeric',  // Minute (e.g., 30)
-            hour12: false         // Use 24-hour format
-          }
-          return '<b>' + new Date(this.x).toLocaleString("en-us", localdateopts) + ' UTC' + offsetString + '</b><br/> Value: ' + this.y;
+          // let localdateopts = {month: 'short',   // Short month name (e.g., Jan)
+          //   day: 'numeric',    // Day of the month (e.g., 15)
+          //   hour: 'numeric',   // Hour (e.g., 12)
+          //   minute: 'numeric',  // Minute (e.g., 30)
+          //   hour12: false         // Use 24-hour format
+          // }
+          // return '<b>' + new Date(this.x).toLocaleString("en-us", localdateopts) + ' UTC' + offsetString + '</b><br/> Value: ' + this.y;
+          const options = {
+            month: 'short',       // Three-letter month abbreviation (e.g., Jan)
+            day: '2-digit',       // Two-digit day (01-31)
+            hour: '2-digit',      // Two-digit hour (00-23)
+            minute: '2-digit',    // Two-digit minute (00-59)
+            hourCycle: 'h23'      // Use 24-hour format
+          };
+          return '<b>' + new Intl.DateTimeFormat('en-US', options).format(this.x) + ' UTC' + offsetString + '</b><br/> Value: ' + this.y;
         }
       },
       title: {
@@ -179,24 +190,25 @@ function Graph(props) {
         labels: {
           // format: "{value:%Y-%b-%e %l:%M %p}",
           formatter: function() {
-            var date = new Date(this.value);
+            let date = new Date(this.value);
             if (useUTC) {
               return Highcharts.dateFormat('%a, %b %d %H:%M UTC', this.value, useUTC);
             }
-            var offsetHours = -date.getTimezoneOffset() / 60;
-            var offsetMinutes = Math.abs(date.getTimezoneOffset() % 60);
-            var offset = ' UTC' + (offsetHours >= 0 ? '+' : '-') + 
+            let offsetHours = -date.getTimezoneOffset() / 60;
+            let offsetMinutes = Math.abs(date.getTimezoneOffset() % 60);
+            let offset = ' UTC' + (offsetHours >= 0 ? '+' : '-') + 
                          ('0' + Math.abs(offsetHours)).slice(-2) + ':' + 
                          ('0' + offsetMinutes).slice(-2);
             // return Highcharts.dateFormat('%Y-%m-%d %H:%M ' + offset, this.value);
             // return Highcharts.dateFormat('%a, %b %d %H:%M ', this.value, useUTC)  + offset;
-            let localdateopts = {month: 'short',   // Short month name (e.g., Jan)
-              day: 'numeric',    // Day of the month (e.g., 15)
-              hour: 'numeric',   // Hour (e.g., 12)
-              minute: 'numeric',  // Minute (e.g., 30)
-              hour12: false         // Use 24-hour format
-            }
-            return  new Date(this.value).toLocaleString("en-us", localdateopts) + offset;
+            // let localdateopts = {month: 'short',   // Short month name (e.g., Jan)
+            //   day: 'numeric',    // Day of the month (e.g., 15)
+            //   hour: 'numeric',   // Hour (e.g., 12)
+            //   minute: 'numeric',  // Minute (e.g., 30)
+            //   hour12: false         // Use 24-hour format
+            // }
+            // return  new Date(this.value).toLocaleString("en-us", localdateopts) + offset;
+            return  moment(new Date(this.value)).format('ddd, MMM DD HH:mm') + offset;
           }
         },
         minRange: 1800000,
