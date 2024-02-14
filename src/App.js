@@ -9,6 +9,8 @@ import {
   Tooltip,
   Button,
   Box,
+  Switch,
+  FormControlLabel,
 } from "@mui/material";
 import { CalendarMonth, Info } from "@mui/icons-material";
 import { DataGridPro, GridToolbar, LicenseInfo } from "@mui/x-data-grid-pro";
@@ -30,6 +32,7 @@ function App() {
   document.title = "Resources Monitoring";
   const { readString } = usePapaParse(),
     { href, protocol, host } = window.location,
+    [useUTC, setUseUTC] = useState(true),
     mode = href.startsWith("http://localhost") ? "local" : "remote",
     urlPrefix = protocol + "//" + host,
     webDavPrefix = urlPrefix + "/lsaf/webdav/repo", // prefix for webdav access to LSAF - ignores versions
@@ -60,7 +63,8 @@ function App() {
                 for (let i = 0; i < keys.length; i++) {
                   if (keys[i] === "date" && r[i] && r[i].length > 20) {
                     // console.log(keys[i], r[i], r[i].substring(0, 19));
-                    tr[keys[i]] = r[i].substring(0, 19);
+                    // tr[keys[i]] = r[i].substring(0, 19);
+                    tr[keys[i]] = r[i];
                   } else {
                     tr[keys[i]] = r[i];
                   }
@@ -312,7 +316,7 @@ function App() {
     if (!rows || rows.length === 0 || Object.keys(minMax).length < 15) return;
     console.log("minMax", minMax);
     setCols([
-      { field: "date", headerName: "Date", width: 150 },
+      { field: "date", headerName: "Date", width: 200 },
       {
         field: "cpu_pct_used",
         headerName: "CPU",
@@ -532,6 +536,22 @@ function App() {
 
   return (
     <div className="App">
+      <Tooltip title="Time Display">
+        <FormControlLabel
+          sx={{ position: "fixed", top: 2, right: 50, zIndex: 100 }}
+          control={
+            <Switch
+            checked={useUTC}
+            onChange={() => {
+              setUseUTC(!useUTC);
+            }}
+            color="primary"
+            inputProps={{ 'aria-label': 'toggle switch' }}
+          />
+          }
+          label={useUTC ? 'UTC' : 'local time'}
+        />
+      </Tooltip>
       <Tooltip title="Information about this screen">
         <IconButton
           color="info"
@@ -557,7 +577,7 @@ function App() {
       {/* <Box>LSAF Resource Usage</Box> */}
       {uniqueRows && 
       uniqueRows.length > 0 && 
-      <Graph rows={uniqueRows} filterRows={filterRows} />
+      <Graph rows={uniqueRows} filterRows={filterRows} useUTC={useUTC} />
       }
       <Snackbar
         open={openSnackbar}
