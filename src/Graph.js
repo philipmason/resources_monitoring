@@ -53,6 +53,21 @@ function Graph(props) {
   }, [seriesVisibility]);
 
 
+  // console.log("WATCH::", Object.entries(seriesVisibility).filter(([k, v]) => ["recvQbytes", "sendQbytes"].includes(k)));
+  const Y2axisVisible =
+    Object.entries(seriesVisibility)
+      .filter(([k, v]) =>  ["recvQbytes", "sendQbytes"].includes(k))
+      .some(([k, v]) => v)
+      ;
+  const Y3axisVisible =
+    Object.entries(seriesVisibility)
+      .filter(([k, v]) =>  [
+        "uSockServers", "uSockConn", "tcpActConn", "tcpInactConn", "httpsActConn", "httpsInactConn"
+        ].includes(k))
+      .some(([k, v]) => v)
+      ;
+  console.log("Y2axisVisible:", Y2axisVisible, "Y3axisVisible:", Y3axisVisible);
+
   const // destructuring objects
     { rows:allrows, filterRows, useUTC } = props;
   // When too many data points are present, the plot is not shown
@@ -268,13 +283,13 @@ function Graph(props) {
       }, { // Secondary yAxis
         title: { text: '... Data Queued, log10(bytes)', },
         opposite: true,
-        visible: true // Initially set the secondary Y-axis 1 to be visible
+        visible: Y2axisVisible // Initially set the secondary Y-axis 1 visibility
     }, { // Tertiary yAxis
         title: {
             text: '--- Number Connections'
         },
         opposite: true,
-        visible: false // Initially set the secondary Y-axis 2 to be hidden
+        visible: Y3axisVisible // Initially set the secondary Y-axis 2 visibility
     }],
       time: { useUTC: useUTC, timezoneOffset: new Date().getTimezoneOffset() },
       data: { dateFormat: "YYYY-MM-DD" },
