@@ -316,7 +316,7 @@ function App() {
     if (!rows || rows.length === 0 || Object.keys(minMax).length < 15) return;
     console.log("minMax", minMax);
     setCols([
-      { field: "date", headerName: "Date", width: 150 },
+      { field: "date", headerName: "Date", width: 200 },
       {
         field: "cpu_pct_used",
         headerName: "CPU",
