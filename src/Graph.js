@@ -1,9 +1,58 @@
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Highcharts from "highcharts";
 import HighchartsReact from "highcharts-react-official";
 import moment from 'moment';
 
 function Graph(props) {
+  const chartRef = useRef(null);
+  const initialSeriesVisibility = { 
+    CPU: true, 
+    Mem: true, 
+    Swap: true, 
+    Transient: true, 
+    SASwork: true, 
+    Workspace: true, 
+    Xythosfs: true, 
+    recvQbytes: false, 
+    sendQbytes: false, 
+    uSockServers: false, 
+    uSockConn: true, 
+    tcpActConn: false, 
+    tcpInactConn: false, 
+    httpsActConn: false, 
+    httpsInactConn: false 
+  };
+  const [seriesVisibility, setSeriesVisibility] = useState( initialSeriesVisibility );
+
+  useEffect(() => {
+    if (chartRef.current) {
+      const chart = chartRef.current.chart;
+
+      // Update series visibility based on state
+      chart.series.forEach(series => {
+        const seriesName = series.name;
+        if (seriesVisibility[seriesName] !== undefined) {
+          series.setVisible(seriesVisibility[seriesName], false);
+        }
+      });
+
+      let yAxisVisible = [false, false]; // Array to track visibility of secondary Y-axes
+  
+      chart.series.forEach((series, index) => {
+        if (series.yAxis.index > 0 && series.visible) {
+          yAxisVisible[series.yAxis.index - 1] = true; // Set corresponding secondary Y-axis visibility to true
+        }
+      });
+      chart.yAxis.forEach((yAxis, index) => {
+        if (index > 0) {
+          yAxis.update({ visible: yAxisVisible[index - 1] }, false); // Update visibility of secondary Y-axes                  
+        }
+      });
+      chart.redraw();
+    }
+  }, [seriesVisibility]);
+
+
   const // destructuring objects
     { rows:allrows, filterRows, useUTC } = props;
   // When too many data points are present, the plot is not shown
@@ -174,15 +223,15 @@ function Graph(props) {
         { name: "Xythosfs", data: _xythosfs.slice(slice_start,slice_length) },
 
         // recvQbytes, sendQbytes
-        { name: "recvQbytes", data: _recvQbytes.slice(slice_start,slice_length), yAxis: 1, dashStyle: 'Dot'},  
-        { name: "sendQbytes", data: _sendQbytes.slice(slice_start,slice_length), yAxis: 1, dashStyle: 'Dot'},  
-        // usockservers, usockconn, tcpactconn, tcpinactconn, httpsactconn, httpsinactconn
-        { name: "uSockServers", data: _usockservers.slice(slice_start,slice_length), yAxis: 2, dashStyle: 'Dash', visible: false},   // Initially hidden
-        { name: "uSockConn", data: _usockconn.slice(slice_start,slice_length), yAxis: 2, dashStyle: 'Dash', visible: false},   // Initially hidden  
-        { name: "tcpActConn", data: _tcpactconn.slice(slice_start,slice_length), yAxis: 2, dashStyle: 'Dash', visible: false},   // Initially hidden  
-        { name: "tcpInactConn", data: _tcpinactconn.slice(slice_start,slice_length), yAxis: 2, dashStyle: 'Dash', visible: false},   // Initially hidden  
-        { name: "httpsActConn", data: _httpsactconn.slice(slice_start,slice_length), yAxis: 2, dashStyle: 'Dash', visible: false},   // Initially hidden  
-        { name: "httpsInactConn", data: _httpsinactconn.slice(slice_start,slice_length), yAxis: 2, dashStyle: 'Dash', visible: false},   // Initially hidden  
+        { name: "recvQbytes", data: _recvQbytes.slice(slice_start,slice_length), yAxis: 1, dashStyle: 'Dot', visible: seriesVisibility["recvQbytes"] },  
+        { name: "sendQbytes", data: _sendQbytes.slice(slice_start,slice_length), yAxis: 1, dashStyle: 'Dot', visible: seriesVisibility["sendQbytes"] },  
+        // uSockServers, uSockConn, tcpActConn, tcpInactConn, httpsActConn, httpsInactConn
+        { name: "uSockServers", data: _usockservers.slice(slice_start,slice_length), yAxis: 2, dashStyle: 'Dash', visible: seriesVisibility["uSockServers"] },   // Initially hidden
+        { name: "uSockConn", data: _usockconn.slice(slice_start,slice_length), yAxis: 2, dashStyle: 'Dash', visible: seriesVisibility["uSockConn"]},   // Initially hidden  
+        { name: "tcpActConn", data: _tcpactconn.slice(slice_start,slice_length), yAxis: 2, dashStyle: 'Dash', visible: seriesVisibility["tcpActConn"]},   // Initially hidden  
+        { name: "tcpInactConn", data: _tcpinactconn.slice(slice_start,slice_length), yAxis: 2, dashStyle: 'Dash', visible: seriesVisibility["tcpInactConn"]},   // Initially hidden  
+        { name: "httpsActConn", data: _httpsactconn.slice(slice_start,slice_length), yAxis: 2, dashStyle: 'Dash', visible: seriesVisibility["httpsActConn"]},   // Initially hidden  
+        { name: "httpsInactConn", data: _httpsinactconn.slice(slice_start,slice_length), yAxis: 2, dashStyle: 'Dash', visible: seriesVisibility["httpsInactConn"]},   // Initially hidden  
       ],
       xAxis: {
         type: "datetime",
@@ -233,15 +282,24 @@ function Graph(props) {
         series: {
           events: {
             legendItemClick: function () {
-              const series = this;
-              const chart = series.chart;
+              // const series = this;
+              // const chart = series.chart;
               
               // Toggle visibility of the series
-              series.setVisible(!series.visible);
+              // series.setVisible(!series.visible);
+
+              
+            const seriesName = this.name;
+            const isVisible = this.visible;
+
+            setSeriesVisibility(prevState => ({
+                ...prevState,
+                [seriesName]: !isVisible
+              }));
               
               // Redraw the chart after handling the click
-              chart.redraw();
-  
+              // chart.redraw();
+              /*
               let yAxisVisible = [false, false]; // Array to track visibility of secondary Y-axes
   
               chart.series.forEach((series, index) => {
@@ -255,6 +313,7 @@ function Graph(props) {
                 }
               });
               chart.redraw();
+              */
               
               // Return false to prevent the default toggle action
               return false;
@@ -283,7 +342,7 @@ function Graph(props) {
     
   return (
     <div>
-      <HighchartsReact highcharts={Highcharts} options={options} />
+      <HighchartsReact highcharts={Highcharts} options={options} ref={chartRef} />
     </div>
   );
 }
