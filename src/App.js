@@ -11,6 +11,7 @@ import {
   Box,
   Switch,
   FormControlLabel,
+  Slider,
 } from "@mui/material";
 import { CalendarMonth, Info } from "@mui/icons-material";
 import { DataGridPro, GridToolbar, LicenseInfo } from "@mui/x-data-grid-pro";
@@ -45,12 +46,43 @@ function App() {
     [day6, setDay6] = useState(null),
     [day7, setDay7] = useState(null),
     [loadDays, setLoadDays] = useState(true),
+    [daysSelected, setDaysSelected] = useState(7),
     [cols, setCols] = useState([]),
     [rows, setRows] = useState(null),
     [filteredRows, setFilteredRows] = useState([]),
     [timeout1, setTimeout1] = useState(null),
     [versions, setVersions] = useState(null),
     [selectedVersion, setSelectedVersion] = useState(null), // if not null, then use this version instead of latest
+    marks = [
+      {
+        value: 1,
+        label: "1 day",
+      },
+      {
+        value: 2,
+        label: "2 days",
+      },
+      {
+        value: 3,
+        label: "3 days",
+      },
+      {
+        value: 4,
+        label: "4 days",
+      },
+      {
+        value: 5,
+        label: "5 days",
+      },
+      {
+        value: 6,
+        label: "6 days",
+      },
+      {
+        value: 7,
+        label: "1 week",
+      },
+    ],
     processCsv = (data, day, dayArray) => {
       readString(data, {
         worker: true,
@@ -246,8 +278,30 @@ function App() {
         </Box>
       );
     },
+    getWeek = () => {
+      setRows([]);
+      setLoadDays(true);
+      addRows("1");
+      addRows("2");
+      addRows("3");
+      addRows("4");
+      addRows("5");
+      addRows("6");
+      addRows("7");
+    },
     [openInfo, setOpenInfo] = useState(false), // shows dialog with info about this screen
     [openDateSelector, setOpenDateSelector] = useState(false); // shows dialog with date selector
+
+  // if slider was used then get data for the number of days selected
+  // useEffect(() => {
+  //   getWeek();
+  //   setOpenDateSelector(false);
+  //   setSelectedVersion(null);
+  //   setTimeout(() => {
+  //     setReload(true);
+  //   }, 2000); // wait 2 seconds and then trigger a reload
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [daysSelected]);
 
   useEffect(() => {
     // if (!reload) return;
@@ -460,14 +514,34 @@ function App() {
 
   useEffect(() => {
     if (day1 && day2 && day3 && day4 && day5 && day6 && day7) {
-      const tempRows = day1
+      const tempRows0 = day1
         .concat(day2, day3, day4, day5, day6, day7)
         .sort((a, b) => {
           if (a.date > b.date) return 1;
           if (a.date < b.date) return -1;
           return 0;
         });
-      // console.log("tempRows", tempRows);
+
+      // apply filter on days selected from slider
+      const maxDate = new Date(
+          tempRows0.reduce((prev, curr) =>
+            prev.date > curr.date ? prev : curr
+          ).date
+        ),
+        targetDate = new Date(
+          maxDate.getTime() - daysSelected * 86400000
+        ).setHours(0, 0, 0, 0);
+      console.log(
+        "daysSelected",
+        daysSelected,
+        "tempRows0.length",
+        tempRows0.length,
+        "maxDate",
+        maxDate,
+        "targetDate",
+        targetDate
+      );
+      const tempRows = tempRows0.filter((r) => new Date(r.date) >= targetDate);
       // work out the min and max for each column and put into an object
       const tempMinMax = {};
       tempRows.forEach((row) => {
@@ -478,7 +552,7 @@ function App() {
           if (key !== "id" && key !== "date" && key !== "high_usage") {
             row[key] = row[key] || (0.01 * Math.random()).toFixed(4);
           }
-        })
+        });
         keys.forEach((key) => {
           // console.log(acc, xx, ind, key, row[key]);
           if (key !== "id" && key !== "date" && key !== "high_usage") {
@@ -494,21 +568,30 @@ function App() {
         });
       });
       console.log("tempMinMax", tempMinMax);
-      const n_finite_dates = tempRows.filter(r => isFinite(new Date(r.date))).length;
+      const n_finite_dates = tempRows.filter((r) =>
+        isFinite(new Date(r.date))
+      ).length;
       // console.log('Nb rows with Finite Dates', n_finite_dates);
 
       // work out average interval between dates
-      const interval = n_finite_dates <= 11 ? 120000 : Math.abs(
-        tempRows
-          .filter(r => isFinite(new Date(r.date)))
-          .sort((a,b) => new Date(a.date) - new Date(b.date))
-          .slice(0, 11)
-          .map((r, i, ar) => {
-            const diff =
-              Math.abs(i>=10 ? 0 : new Date(ar[i].date) - new Date(ar[i + 1].date));
-            return diff;
-          })
-          .reduce((a, b) => a + b) / 10);
+      const interval =
+        n_finite_dates <= 11
+          ? 120000
+          : Math.abs(
+              tempRows
+                .filter((r) => isFinite(new Date(r.date)))
+                .sort((a, b) => new Date(a.date) - new Date(b.date))
+                .slice(0, 11)
+                .map((r, i, ar) => {
+                  const diff = Math.abs(
+                    i >= 10
+                      ? 0
+                      : new Date(ar[i].date) - new Date(ar[i + 1].date)
+                  );
+                  return diff;
+                })
+                .reduce((a, b) => a + b) / 10
+            );
       setReloadRemoteEvery(interval);
       console.log("Interval between reloads set to", interval, "ms");
       setRows(tempRows);
@@ -522,17 +605,16 @@ function App() {
   const uniqueDates = new Set();
   // Use filter to keep only the items with unique dates & last field populated
   let uniqueRows = [];
-  if (rows && rows.length > 0){
-    uniqueRows = rows
-    .filter((row) => {
+  if (rows && rows.length > 0) {
+    uniqueRows = rows.filter((row) => {
       const isUnique = !uniqueDates.has(row.date);
       uniqueDates.add(row.date);
       return isUnique;
     });
   }
 
-  if (minMax) console.log('MinMax keys:', Object.keys(minMax));
-  if (uniqueRows) console.log('uniqueRows.length:', uniqueRows.length);
+  if (minMax) console.log("MinMax keys:", Object.keys(minMax));
+  if (uniqueRows) console.log("uniqueRows.length:", uniqueRows.length);
 
   return (
     <div className="App">
@@ -541,15 +623,15 @@ function App() {
           sx={{ position: "fixed", top: 2, right: 50, zIndex: 100 }}
           control={
             <Switch
-            checked={useUTC}
-            onChange={() => {
-              setUseUTC(!useUTC);
-            }}
-            color="primary"
-            inputProps={{ 'aria-label': 'toggle switch' }}
-          />
+              checked={useUTC}
+              onChange={() => {
+                setUseUTC(!useUTC);
+              }}
+              color="primary"
+              inputProps={{ "aria-label": "toggle switch" }}
+            />
           }
-          label={useUTC ? 'UTC' : 'local time'}
+          label={useUTC ? "UTC" : "local time"}
         />
       </Tooltip>
       <Tooltip title="Information about this screen">
@@ -575,10 +657,9 @@ function App() {
         </IconButton>
       </Tooltip>
       {/* <Box>LSAF Resource Usage</Box> */}
-      {uniqueRows && 
-      uniqueRows.length > 0 && 
-      <Graph rows={uniqueRows} filterRows={filterRows} useUTC={useUTC} />
-      }
+      {uniqueRows && uniqueRows.length > 0 && (
+        <Graph rows={uniqueRows} filterRows={filterRows} useUTC={useUTC} />
+      )}
       <Snackbar
         open={openSnackbar}
         autoHideDuration={6000}
@@ -645,22 +726,36 @@ function App() {
       >
         <DialogTitle>Select date range to show</DialogTitle>
         <DialogContent>
+          <Slider
+            aria-label="Days"
+            defaultValue={7}
+            onChangeCommitted={(e, v) => {
+              console.log("onChangeCommitted", e, v);
+              getWeek();
+              setOpenDateSelector(false);
+              setSelectedVersion(null);
+              setDaysSelected(v);
+              setTimeout(() => {
+                setReload(true);
+              }, 2000); // wait a second and then trigger a reload
+            }}
+            // getAriaValueText={valueText}
+            valueLabelDisplay="on"
+            shiftStep={1}
+            step={1}
+            marks={marks}
+            min={1}
+            max={7}
+          />
           <Tooltip
             title={"Latest week available - right up to within 5 minutes"}
           >
             <Button
               onClick={() => {
-                setRows([]);
-                setLoadDays(true);
-                addRows("1");
-                addRows("2");
-                addRows("3");
-                addRows("4");
-                addRows("5");
-                addRows("6");
-                addRows("7");
+                getWeek();
                 setOpenDateSelector(false);
                 setSelectedVersion(null);
+                setDaysSelected(7);
                 setTimeout(() => {
                   setReload(true);
                 }, 2000); // wait a second and then trigger a reload
@@ -677,6 +772,7 @@ function App() {
                 setLoadDays(false);
                 setOpenDateSelector(false);
                 setSelectedVersion(null);
+                setDaysSelected(7);
                 setTimeout(() => {
                   addRows("*");
                   setReload(true);
@@ -694,6 +790,7 @@ function App() {
                 setLoadDays(false);
                 setOpenDateSelector(false);
                 setSelectedVersion(null);
+                setDaysSelected(7);
                 setTimeout(() => {
                   addRows("M");
                   setReload(true);
@@ -718,6 +815,7 @@ function App() {
                       setLoadDays(false);
                       setOpenDateSelector(false);
                       setSelectedVersion(v);
+                      setDaysSelected(7);
                       setTimeout(() => {
                         console.log(
                           "selectedVersion",
@@ -731,7 +829,12 @@ function App() {
                         setReload(true);
                       }, 2000); // wait a second and then trigger a reload
                     }}
-                    sx={{ backgroundColor: backgroundColor, mr: 1 }}
+                    sx={{
+                      backgroundColor: backgroundColor,
+                      mr: 1,
+                      mt: 3,
+                      mb: 3,
+                    }}
                   >
                     {v}
                   </Button>
