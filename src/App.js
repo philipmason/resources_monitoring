@@ -13,7 +13,12 @@ import {
   FormControlLabel,
   Slider,
 } from "@mui/material";
-import { CalendarMonth, Info } from "@mui/icons-material";
+import {
+  ArrowLeftRounded,
+  ArrowRightRounded,
+  CalendarMonth,
+  Info,
+} from "@mui/icons-material";
 import { DataGridPro, GridToolbar, LicenseInfo } from "@mui/x-data-grid-pro";
 import { usePapaParse } from "react-papaparse";
 import localDay1 from "./test/day1.csv";
@@ -83,6 +88,7 @@ function App() {
         label: "1 week",
       },
     ],
+    [offset, setOffset] = useState(0),
     processCsv = (data, day, dayArray) => {
       readString(data, {
         worker: true,
@@ -158,7 +164,7 @@ function App() {
           : day === 7
           ? localDay7
           : past_week;
-      console.log("csv", csv);
+      console.log("> addLocalRows - csv", csv);
       fetch(csv)
         .then((response) => response.text())
         .then((data) => {
@@ -243,21 +249,21 @@ function App() {
           (value - minMax[field].min) / (minMax[field].max - minMax[field].min),
         avg = minMax[field].sum / minMax[field].n,
         low =
-          field === "mem_pct_used"
-            ? 18
-            : field === "swap_pct_used"
-            ? 17.5
-            : field === "xythosfs_pct_used"
-            ? 40
-            : avg / 2,
+          // field === "mem_pct_used"
+          //   ? 25
+          // : field === "swap_pct_used"
+          // ? 17.5
+          // : field === "xythosfs_pct_used"
+          // ? 40
+          avg - minMax[field].stdDev,
         high =
-          field === "mem_pct_used"
-            ? 20
-            : field === "swap_pct_used"
-            ? 20
-            : field === "xythosfs_pct_used"
-            ? 42
-            : avg * 2;
+          // field === "mem_pct_used"
+          //   ? 75
+          // : field === "swap_pct_used"
+          // ? 20
+          // : field === "xythosfs_pct_used"
+          // ? 42
+          avg + minMax[field].stdDev;
 
       const backgroundColor =
         Number(value) <= low
@@ -292,25 +298,14 @@ function App() {
     [openInfo, setOpenInfo] = useState(false), // shows dialog with info about this screen
     [openDateSelector, setOpenDateSelector] = useState(false); // shows dialog with date selector
 
-  // if slider was used then get data for the number of days selected
-  // useEffect(() => {
-  //   getWeek();
-  //   setOpenDateSelector(false);
-  //   setSelectedVersion(null);
-  //   setTimeout(() => {
-  //     setReload(true);
-  //   }, 2000); // wait 2 seconds and then trigger a reload
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, [daysSelected]);
-
   useEffect(() => {
     // if (!reload) return;
-    console.log(
-      "useEffect - reload",
-      reload,
-      "selectedVersion",
-      selectedVersion
-    );
+    // console.log(
+    //   "useEffect - reload",
+    //   reload,
+    //   "selectedVersion",
+    //   selectedVersion
+    // );
     setReload(false);
     setOpenSnackbar(true);
     if (mode === "local") {
@@ -368,7 +363,7 @@ function App() {
 
   useEffect(() => {
     if (!rows || rows.length === 0 || Object.keys(minMax).length < 15) return;
-    console.log("minMax", minMax);
+    // console.log("minMax", minMax);
     setCols([
       { field: "date", headerName: "Date", width: 200 },
       {
@@ -528,20 +523,43 @@ function App() {
             prev.date > curr.date ? prev : curr
           ).date
         ),
-        targetDate = new Date(
-          maxDate.getTime() - daysSelected * 86400000
-        ).setHours(0, 0, 0, 0);
-      console.log(
-        "daysSelected",
-        daysSelected,
-        "tempRows0.length",
-        tempRows0.length,
-        "maxDate",
-        maxDate,
-        "targetDate",
-        targetDate
-      );
-      const tempRows = tempRows0.filter((r) => new Date(r.date) >= targetDate);
+        // minDate = new Date(
+        //   tempRows0.reduce((prev, curr) =>
+        //     prev.date < curr.date ? prev : curr
+        //   ).date
+        // ),
+        fromDate = new Date(
+          new Date(
+            maxDate.getTime() - (offset + daysSelected - 1) * 86400000
+          ).setHours(0, 0, 0, 0)
+        ),
+        toDate = new Date(
+          new Date(fromDate.getTime() + (daysSelected * 86400000 - 1000))
+        );
+      // console.log(
+      //   "tempRows0.length",
+      //   tempRows0.length,
+      //   "daysSelected",
+      //   daysSelected,
+      //   "offset",
+      //   offset,
+      //   "maxDate",
+      //   maxDate,
+      //   "fromDate",
+      //   fromDate,
+      //   "toDate",
+      //   toDate,
+      //   "minDate",
+      //   minDate
+      // );
+      const tempRows =
+        offset === 0 || daysSelected > 6
+          ? tempRows0.filter((r) => new Date(r.date) >= fromDate)
+          : tempRows0.filter(
+              (r) => new Date(r.date) >= fromDate && new Date(r.date) <= toDate
+            );
+      // console.log("tempRows", tempRows);
+
       // work out the min and max for each column and put into an object
       const tempMinMax = {};
       tempRows.forEach((row) => {
@@ -551,21 +569,38 @@ function App() {
           // console.log(acc, xx, ind, key, row[key]);
           if (key !== "id" && key !== "date" && key !== "high_usage") {
             row[key] = row[key] || (0.01 * Math.random()).toFixed(4);
+            const values = tempRows.map((row) => Number(row[key]));
+            tempMinMax[key] = {
+              n: values.length,
+              min: Math.min(...values),
+              max: Math.max(...values),
+              sum: values.reduce((acc, val) => acc + val, 0),
+            };
+            tempMinMax[key] = {
+              ...tempMinMax[key],
+              stdDev: Math.sqrt(
+                values.reduce(
+                  (acc, val) =>
+                    acc + (val - tempMinMax[key].sum / values.length) ** 2,
+                  0
+                ) / values.length
+              ),
+            };
           }
         });
-        keys.forEach((key) => {
-          // console.log(acc, xx, ind, key, row[key]);
-          if (key !== "id" && key !== "date" && key !== "high_usage") {
-            if (!tempMinMax[key])
-              tempMinMax[key] = { min: 100, max: 0, n: 0, sum: 0 };
-            if (Number(row[key]) < tempMinMax[key].min)
-              tempMinMax[key].min = Number(row[key]);
-            if (Number(row[key]) > tempMinMax[key].max)
-              tempMinMax[key].max = Number(row[key]);
-            tempMinMax[key].n = tempMinMax[key].n + 1;
-            tempMinMax[key].sum = tempMinMax[key].sum + Number(row[key]);
-          }
-        });
+        // keys.forEach((key) => {
+        //   // console.log(acc, xx, ind, key, row[key]);
+        //   if (key !== "id" && key !== "date" && key !== "high_usage") {
+        //     if (!tempMinMax[key])
+        //       tempMinMax[key] = { min: 100, max: 0, n: 0, sum: 0 };
+        //     if (Number(row[key]) < tempMinMax[key].min)
+        //       tempMinMax[key].min = Number(row[key]);
+        //     if (Number(row[key]) > tempMinMax[key].max)
+        //       tempMinMax[key].max = Number(row[key]);
+        //     tempMinMax[key].n = tempMinMax[key].n + 1;
+        //     tempMinMax[key].sum = tempMinMax[key].sum + Number(row[key]);
+        //   }
+        // });
       });
       console.log("tempMinMax", tempMinMax);
       const n_finite_dates = tempRows.filter((r) =>
@@ -593,13 +628,13 @@ function App() {
                 .reduce((a, b) => a + b) / 10
             );
       setReloadRemoteEvery(interval);
-      console.log("Interval between reloads set to", interval, "ms");
+      console.log("INFO: Interval between reloads set to", interval, "ms");
       setRows(tempRows);
       setFilteredRows(tempRows);
       setMinMax(tempMinMax);
     }
     // eslint-disable-next-line
-  }, [day1, day2, day3, day4, day5, day6, day7, loadDays]);
+  }, [day1, day2, day3, day4, day5, day6, day7, loadDays, offset]);
 
   // Create a Set to track unique dates
   const uniqueDates = new Set();
@@ -613,11 +648,51 @@ function App() {
     });
   }
 
-  if (minMax) console.log("MinMax keys:", Object.keys(minMax));
-  if (uniqueRows) console.log("uniqueRows.length:", uniqueRows.length);
+  // if (minMax) console.log("MinMax keys:", Object.keys(minMax));
+  // if (uniqueRows) console.log("uniqueRows.length:", uniqueRows.length);
 
   return (
     <div className="App">
+      {daysSelected < 7 ? (
+        <>
+          <Tooltip title="Previous Day">
+            <IconButton
+              color="info"
+              sx={{
+                fontSize: "inherit",
+                position: "fixed",
+                top: 2,
+                right: 230,
+                zIndex: 100,
+              }}
+              onClick={() => {
+                setOffset(offset < 6 ? offset + 1 : 6);
+              }}
+              disabled={daysSelected > 6 || offset >= 6 ? true : false}
+            >
+              <ArrowLeftRounded />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Next Day">
+            <IconButton
+              color="info"
+              sx={{
+                fontSize: "inherit",
+                position: "fixed",
+                top: 2,
+                right: 190,
+                zIndex: 100,
+              }}
+              onClick={() => {
+                setOffset(offset > 1 ? offset - 1 : 0);
+              }}
+              disabled={offset < 1 ? true : false}
+            >
+              <ArrowRightRounded />
+            </IconButton>
+          </Tooltip>
+        </>
+      ) : null}
       <Tooltip title="Time Display">
         <FormControlLabel
           sx={{ position: "fixed", top: 2, right: 50, zIndex: 100 }}
@@ -656,9 +731,21 @@ function App() {
           <CalendarMonth />
         </IconButton>
       </Tooltip>
+
       {/* <Box>LSAF Resource Usage</Box> */}
       {uniqueRows && uniqueRows.length > 0 && (
-        <Graph rows={uniqueRows} filterRows={filterRows} useUTC={useUTC} />
+        <Graph
+          rows={uniqueRows}
+          filterRows={filterRows}
+          useUTC={useUTC}
+          info={
+            daysSelected === 7
+              ? ""
+              : offset > 0
+              ? `- viewing ${daysSelected} day(s), offset by ${offset} day(s)`
+              : `- viewing ${daysSelected} day(s)`
+          }
+        />
       )}
       <Snackbar
         open={openSnackbar}
@@ -728,13 +815,13 @@ function App() {
         <DialogContent>
           <Slider
             aria-label="Days"
-            defaultValue={7}
+            defaultValue={daysSelected}
             onChangeCommitted={(e, v) => {
-              console.log("onChangeCommitted", e, v);
               getWeek();
               setOpenDateSelector(false);
               setSelectedVersion(null);
               setDaysSelected(v);
+              setOffset(0);
               setTimeout(() => {
                 setReload(true);
               }, 2000); // wait a second and then trigger a reload
@@ -746,9 +833,12 @@ function App() {
             marks={marks}
             min={1}
             max={7}
+            sx={{ width: "90%", m: 5 }}
           />
           <Tooltip
-            title={"Latest week available - right up to within 5 minutes"}
+            title={
+              "Loads the 7 daily CSV files which make up the latest week available - right up to within 5 minutes"
+            }
           >
             <Button
               onClick={() => {
@@ -765,7 +855,7 @@ function App() {
               Latest
             </Button>
           </Tooltip>
-          <Tooltip title={"Previous week"}>
+          <Tooltip title={"Loads the past_week CSV data"}>
             <Button
               onClick={() => {
                 setRows([]);
@@ -790,7 +880,7 @@ function App() {
                 setLoadDays(false);
                 setOpenDateSelector(false);
                 setSelectedVersion(null);
-                setDaysSelected(7);
+                setDaysSelected(31);
                 setTimeout(() => {
                   addRows("M");
                   setReload(true);
@@ -805,7 +895,9 @@ function App() {
             versions.map((v, vi) => {
               const size = versions.length,
                 backgroundColor =
-                  "#ffff" + Math.floor(128 + (vi / size) * 128).toString(16);
+                  "#" +
+                  Math.floor(128 + (vi / size) * 128).toString(16) +
+                  "ffff";
               return (
                 <Tooltip title={`Version ${v} of previous week`}>
                   {" "}
@@ -831,6 +923,7 @@ function App() {
                     }}
                     sx={{
                       backgroundColor: backgroundColor,
+                      color: "black",
                       mr: 1,
                       mt: 3,
                       mb: 3,
@@ -879,6 +972,38 @@ function App() {
               Clicking on the graph will filter the table to an hour either side
               of the time you click on. This allows investigating the time
               around the point you select.
+            </li>
+            <li>
+              The switch at the top right allows you to choose between using
+              dates/times in your local timezone or Coordinated Universal Time
+              (UTC).
+            </li>
+            <li>
+              The calendar icon at the top right can be clicked on, which will
+              open a window to allow you to choose a date range to use in the
+              graph.
+            </li>
+            <li>
+              If you choose one day, then some arrows will appear at the top
+              right of the graph to allow you to move back and forth one day at
+              a time through the most recent week of data.
+            </li>
+            <li>
+              The table colors bars based on where the value falls in the range
+              of values. If <b>green</b> then the value is more than 2 standard
+              deviations below the average. If <b>red</b> then the value is more
+              than 2 standard deviations above the average. If <b>blue</b> then
+              the value is within 2 standard deviations of the average.
+            </li>
+            <li>
+              Take a look at this document that explains this screen some more:{" "}
+              <a
+                href={`https://argenxbvba.sharepoint.com/:w:/r/sites/Biostatistics/_layouts/15/doc.aspx?sourcedoc=%7B82324cc5-027b-48d6-ac67-ceebc19bd0f5%7D`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Resources Monitoring Web Application User Guide
+              </a>
             </li>
           </ul>
           <Tooltip title={"Email technical programmers"}>
