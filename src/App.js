@@ -33,6 +33,7 @@ function App() {
   const { readString } = usePapaParse(),
     { href, protocol, host } = window.location,
     [useUTC, setUseUTC] = useState(true),
+    [ready, setReady] = useState(false),
     mode = href.startsWith("http://localhost") ? "local" : "remote",
     urlPrefix = protocol + "//" + host,
     webDavPrefix = urlPrefix + "/lsaf/webdav/repo", // prefix for webdav access to LSAF - ignores versions
@@ -45,7 +46,7 @@ function App() {
     [day6, setDay6] = useState(null),
     [day7, setDay7] = useState(null),
     [loadDays, setLoadDays] = useState(true),
-    [cols, setCols] = useState([]),
+    [cols, setCols] = useState(null),
     [rows, setRows] = useState(null),
     [filteredRows, setFilteredRows] = useState([]),
     [timeout1, setTimeout1] = useState(null),
@@ -62,7 +63,6 @@ function App() {
                 const tr = { id: day * 10000 + id };
                 for (let i = 0; i < keys.length; i++) {
                   if (keys[i] === "date" && r[i] && r[i].length > 20) {
-                    // console.log(keys[i], r[i], r[i].substring(0, 19));
                     // tr[keys[i]] = r[i].substring(0, 19);
                     tr[keys[i]] = r[i];
                   } else {
@@ -72,7 +72,6 @@ function App() {
                 return tr;
               })
               .filter((r, seq) => r.id !== 0 && seq !== 0);
-          // console.log("processCsv", day, "tempRows", tempRows);
           if (day === 1) setDay1(tempRows.filter((r) => r.date));
           else if (day === 2 || dayArray === 2)
             setDay2(tempRows.filter((r) => r.date));
@@ -100,7 +99,6 @@ function App() {
       });
     },
     addRows = (day) => {
-      console.log("addRows", day);
       if (mode === "local") {
         addLocalRows(day);
       } else {
@@ -205,7 +203,7 @@ function App() {
       setFilteredRows(filtered);
     },
     renderProgress = (cellValues) => {
-      // console.log(cellValues, minMax);
+      console.log(cellValues, minMax);
       const { field, value } = cellValues,
         flex =
           (value - minMax[field].min) / (minMax[field].max - minMax[field].min),
@@ -313,9 +311,11 @@ function App() {
   }, [webDavPrefix, mode]);
 
   useEffect(() => {
-    if (!rows || rows.length === 0 || Object.keys(minMax).length < 15) return;
+    // console.log(Object.keys(minMax))
+    // if (!rows || rows.length === 0 || Object.keys(minMax).length < 6) return;
+    if (!rows || rows.length === 0 ) return;
     console.log("minMax", minMax);
-    setCols([
+    const tempCols = [
       { field: "date", headerName: "Date", width: 200 },
       {
         field: "cpu_pct_used",
@@ -362,15 +362,15 @@ function App() {
           return renderProgress(cellValues);
         },
       },
-      {
-        field: "workspace_pct_used",
-        headerName: "Workspace",
-        width: 80,
-        type: "number",
-        renderCell: (cellValues) => {
-          return renderProgress(cellValues);
-        },
-      },
+      // {
+      //   field: "workspace_pct_used",
+      //   headerName: "Workspace",
+      //   width: 80,
+      //   type: "number",
+      //   renderCell: (cellValues) => {
+      //     return renderProgress(cellValues);
+      //   },
+      // },
       {
         field: "xythosfs_pct_used",
         headerName: "Xythos FS",
@@ -380,79 +380,81 @@ function App() {
           return renderProgress(cellValues);
         },
       },
-      {
-        field: "TotalRecvQ_bytes",
-        headerName: "RecvQ bytes",
-        width: 80,
-        type: "number",
-        renderCell: (cellValues) => {
-          return renderProgress(cellValues);
-        },
-      },
-      {
-        field: "TotalSendQ_bytes",
-        headerName: "SendQ bytes",
-        width: 80,
-        type: "number",
-        renderCell: (cellValues) => {
-          return renderProgress(cellValues);
-        },
-      },
-      {
-        field: "usockets_servers",
-        headerName: "# Unix Sockets (Server)",
-        width: 80,
-        type: "number",
-        renderCell: (cellValues) => {
-          return renderProgress(cellValues);
-        },
-      },
-      {
-        field: "usockets_connections",
-        headerName: "Unix Sockets (connections)",
-        width: 80,
-        type: "number",
-        renderCell: (cellValues) => {
-          return renderProgress(cellValues);
-        },
-      },
-      {
-        field: "tcp_active_connections",
-        headerName: "TCP active connections",
-        width: 80,
-        type: "number",
-        renderCell: (cellValues) => {
-          return renderProgress(cellValues);
-        },
-      },
-      {
-        field: "tcp_inactive_connections",
-        headerName: "TCP inactive connections",
-        width: 80,
-        type: "number",
-        renderCell: (cellValues) => {
-          return renderProgress(cellValues);
-        },
-      },
-      {
-        field: "active_https_conn",
-        headerName: "HTTPS active connections",
-        width: 80,
-        type: "number",
-        renderCell: (cellValues) => {
-          return renderProgress(cellValues);
-        },
-      },
-      {
-        field: "inactive_https_conn",
-        headerName: "HTTPS inactive connections",
-        width: 80,
-        type: "number",
-        renderCell: (cellValues) => {
-          return renderProgress(cellValues);
-        },
-      },
-    ]);
+      // {
+      //   field: "TotalRecvQ_bytes",
+      //   headerName: "RecvQ bytes",
+      //   width: 80,
+      //   type: "number",
+      //   renderCell: (cellValues) => {
+      //     return renderProgress(cellValues);
+      //   },
+      // },
+      // {
+      //   field: "TotalSendQ_bytes",
+      //   headerName: "SendQ bytes",
+      //   width: 80,
+      //   type: "number",
+      //   renderCell: (cellValues) => {
+      //     return renderProgress(cellValues);
+      //   },
+      // },
+      // {
+      //   field: "usockets_servers",
+      //   headerName: "# Unix Sockets (Server)",
+      //   width: 80,
+      //   type: "number",
+      //   renderCell: (cellValues) => {
+      //     return renderProgress(cellValues);
+      //   },
+      // },
+      // {
+      //   field: "usockets_connections",
+      //   headerName: "Unix Sockets (connections)",
+      //   width: 80,
+      //   type: "number",
+      //   renderCell: (cellValues) => {
+      //     return renderProgress(cellValues);
+      //   },
+      // },
+      // {
+      //   field: "tcp_active_connections",
+      //   headerName: "TCP active connections",
+      //   width: 80,
+      //   type: "number",
+      //   renderCell: (cellValues) => {
+      //     return renderProgress(cellValues);
+      //   },
+      // },
+      // {
+      //   field: "tcp_inactive_connections",
+      //   headerName: "TCP inactive connections",
+      //   width: 80,
+      //   type: "number",
+      //   renderCell: (cellValues) => {
+      //     return renderProgress(cellValues);
+      //   },
+      // },
+      // {
+      //   field: "active_https_conn",
+      //   headerName: "HTTPS active connections",
+      //   width: 80,
+      //   type: "number",
+      //   renderCell: (cellValues) => {
+      //     return renderProgress(cellValues);
+      //   },
+      // },
+      // {
+      //   field: "inactive_https_conn",
+      //   headerName: "HTTPS inactive connections",
+      //   width: 80,
+      //   type: "number",
+      //   renderCell: (cellValues) => {
+      //     return renderProgress(cellValues);
+      //   },
+      // },
+    ];
+    // console.log("tempCols", tempCols);
+    setCols(tempCols);
     // TotalRecvQ_bytes,TotalSendQ_bytes,
     // usockets_servers,usockets_connections,tcp_active_connections,tcp_inactive_connections,active_https_conn,inactive_https_conn
     // eslint-disable-next-line
@@ -460,6 +462,10 @@ function App() {
 
   useEffect(() => {
     if (day1 && day2 && day3 && day4 && day5 && day6 && day7) {
+      // wait for a couple of seconds to avoid some timing issues
+      setTimeout(() => {
+        setReady(true);
+      }, 1000);
       const tempRows = day1
         .concat(day2, day3, day4, day5, day6, day7)
         .sort((a, b) => {
@@ -467,20 +473,17 @@ function App() {
           if (a.date < b.date) return -1;
           return 0;
         });
-      // console.log("tempRows", tempRows);
       // work out the min and max for each column and put into an object
       const tempMinMax = {};
       tempRows.forEach((row) => {
         // row.workspace_pct_used = row.workspace_pct_used || (0.01 * Math.random()).toFixed(4);
         const keys = Object.keys(row);
         keys.forEach((key) => {
-          // console.log(acc, xx, ind, key, row[key]);
           if (key !== "id" && key !== "date" && key !== "high_usage") {
             row[key] = row[key] || (0.01 * Math.random()).toFixed(4);
           }
-        })
+        });
         keys.forEach((key) => {
-          // console.log(acc, xx, ind, key, row[key]);
           if (key !== "id" && key !== "date" && key !== "high_usage") {
             if (!tempMinMax[key])
               tempMinMax[key] = { min: 100, max: 0, n: 0, sum: 0 };
@@ -493,24 +496,30 @@ function App() {
           }
         });
       });
-      console.log("tempMinMax", tempMinMax);
-      const n_finite_dates = tempRows.filter(r => isFinite(new Date(r.date))).length;
-      // console.log('Nb rows with Finite Dates', n_finite_dates);
-
+      const n_finite_dates = tempRows.filter((r) =>
+        isFinite(new Date(r.date))
+      ).length;
+   
       // work out average interval between dates
-      const interval = n_finite_dates <= 11 ? 120000 : Math.abs(
-        tempRows
-          .filter(r => isFinite(new Date(r.date)))
-          .sort((a,b) => new Date(a.date) - new Date(b.date))
-          .slice(0, 11)
-          .map((r, i, ar) => {
-            const diff =
-              Math.abs(i>=10 ? 0 : new Date(ar[i].date) - new Date(ar[i + 1].date));
-            return diff;
-          })
-          .reduce((a, b) => a + b) / 10);
+      const interval =
+        n_finite_dates <= 11
+          ? 120000
+          : Math.abs(
+              tempRows
+                .filter((r) => isFinite(new Date(r.date)))
+                .sort((a, b) => new Date(a.date) - new Date(b.date))
+                .slice(0, 11)
+                .map((r, i, ar) => {
+                  const diff = Math.abs(
+                    i >= 10
+                      ? 0
+                      : new Date(ar[i].date) - new Date(ar[i + 1].date)
+                  );
+                  return diff;
+                })
+                .reduce((a, b) => a + b) / 10
+            );
       setReloadRemoteEvery(interval);
-      console.log("Interval between reloads set to", interval, "ms");
       setRows(tempRows);
       setFilteredRows(tempRows);
       setMinMax(tempMinMax);
@@ -522,17 +531,13 @@ function App() {
   const uniqueDates = new Set();
   // Use filter to keep only the items with unique dates & last field populated
   let uniqueRows = [];
-  if (rows && rows.length > 0){
-    uniqueRows = rows
-    .filter((row) => {
+  if (rows && rows.length > 0) {
+    uniqueRows = rows.filter((row) => {
       const isUnique = !uniqueDates.has(row.date);
       uniqueDates.add(row.date);
       return isUnique;
     });
   }
-
-  if (minMax) console.log('MinMax keys:', Object.keys(minMax));
-  if (uniqueRows) console.log('uniqueRows.length:', uniqueRows.length);
 
   return (
     <div className="App">
@@ -541,15 +546,15 @@ function App() {
           sx={{ position: "fixed", top: 2, right: 50, zIndex: 100 }}
           control={
             <Switch
-            checked={useUTC}
-            onChange={() => {
-              setUseUTC(!useUTC);
-            }}
-            color="primary"
-            inputProps={{ 'aria-label': 'toggle switch' }}
-          />
+              checked={useUTC}
+              onChange={() => {
+                setUseUTC(!useUTC);
+              }}
+              color="primary"
+              inputProps={{ "aria-label": "toggle switch" }}
+            />
           }
-          label={useUTC ? 'UTC' : 'local time'}
+          label={useUTC ? "UTC" : "local time"}
         />
       </Tooltip>
       <Tooltip title="Information about this screen">
@@ -575,17 +580,16 @@ function App() {
         </IconButton>
       </Tooltip>
       {/* <Box>LSAF Resource Usage</Box> */}
-      {uniqueRows && 
-      uniqueRows.length > 0 && 
-      <Graph rows={uniqueRows} filterRows={filterRows} useUTC={useUTC} />
-      }
+      {uniqueRows && uniqueRows.length > 0 && (
+        <Graph rows={uniqueRows} filterRows={filterRows} useUTC={useUTC} />
+      )}
       <Snackbar
         open={openSnackbar}
         autoHideDuration={6000}
         onClose={handleCloseSnackbar}
         message="Data updated"
       />
-      {filteredRows && cols && (
+      {filteredRows && cols && ready && (
         <DataGridPro
           rows={filteredRows}
           columns={cols}
